@@ -17,6 +17,7 @@ def generar_itinerario():
         intereses = datos_usuario.get("intereses", "cultura")
         presupuesto = int(datos_usuario.get("presupuesto", 0))
         duracion = int(datos_usuario.get("duracion", 1))
+        
 
         # Ejemplo de destinos disponibles
         destinos_disponibles = [
@@ -58,6 +59,8 @@ def generar_itinerario():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+# Registrar el blueprint
+app.register_blueprint(places_bp)
 
 if __name__ == '__main__':
     app.run(debug=True)

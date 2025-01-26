@@ -1,16 +1,29 @@
-import React from "react";
-import Home from "./Home"; // Asegúrate de que Home.js esté en la misma carpeta src
+import React, { useState } from "react";
+import Home from "./Home";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
-
 function App() {
+    const [itinerario, setItinerario] = useState([]);
+
+    const handleAddPlace = (place) => {
+        setItinerario([...itinerario, place]);
+    };
+
+    const handleRemovePlace = (index) => {
+        const updatedItinerario = itinerario.filter((_, i) => i !== index);
+        setItinerario(updatedItinerario);
+    };
+
     return (
         <div>
-            <Navbar/>
-            <Home />
-            <Footer/>
-            
+            <Navbar />
+            <Home 
+                itinerario={itinerario}
+                onAddPlace={handleAddPlace}
+                onRemovePlace={handleRemovePlace}
+            />
+            <Footer />
         </div>
     );
 }

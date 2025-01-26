@@ -1,4 +1,17 @@
+# Node.js
 node_modules/
-__pycache__/
 .env
+
+# Python
+__pycache__/
+*.pyc
+instance/
+.env
+
+# Build files
+build/
+dist/
+
+# Otros
 .vscode/
+.DS_Store
