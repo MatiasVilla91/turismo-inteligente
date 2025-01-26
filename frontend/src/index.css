@@ -1,0 +1,19 @@
+/* Animación suave al pasar el mouse sobre las tarjetas */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: scale(1.05); /* Aumenta ligeramente el tamaño */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Añade una sombra */
+}
+
+/* Animación para el botón */
+.btn-primary {
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #004085; /* Un azul más oscuro */
+    transform: translateY(-2px); /* Eleva ligeramente el botón */
+}
