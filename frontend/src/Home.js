@@ -74,14 +74,14 @@ function Home() {
     };
 
     const handleAddToItinerary = (place) => {
-        if (!itinerario.destinos.some((item) => item.lat === place.lat && item.lng === place.lng)) {
-            setItinerario((prev) => ({
-                ...prev,
-                destinos: [...prev.destinos, place], // Agregar al array de destinos
-            }));
-        }
-    };
-    
+    if (!itinerario.destinos.some((item) => item.lat === place.lat && item.lng === place.lng)) {
+        setItinerario((prev) => ({
+            ...prev,
+            destinos: [...prev.destinos, place], // Agregar al array de destinos
+        }));
+    }
+};
+
 
     const handleRemoveDestino = (index) => {
         const updatedDestinos = itinerario.destinos.filter((_, i) => i !== index);
@@ -98,23 +98,43 @@ function Home() {
                         <ul className="list-group">
                             {itinerario.destinos.map((destino, index) => (
                                 <li key={index} className="list-group-item d-flex align-items-center" style={{ borderRadius: "8px", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)" }}>
-                                    <img 
-                                        src={destino.imagen || "https://via.placeholder.com/50"} 
-                                        alt={destino.nombre} 
-                                        className="img-thumbnail me-3" 
-                                        style={{ width: "50px", height: "50px", borderRadius: "8px" }}
-                                    />
-                                    <div className="flex-grow-1">
-                                        <strong style={{ fontSize: "1.1rem", color: "#333" }}>{destino.nombre}</strong>
-                                        <p style={{ margin: "0", fontSize: "0.9rem", color: "#666" }}>{destino.descripcion}</p>
-                                        <p style={{ margin: "0.5rem 0 0", fontSize: "0.9rem", color: "#28a745" }}>Costo: ${destino.costo}</p>
-                                    </div>
-                                    <button 
-                                        className="btn btn-danger btn-sm" 
-                                        style={{ marginLeft: "10px" }}
-                                        onClick={() => handleRemoveDestino(index)}
-                                    >
-                                        <FaTrash />
+                                     {/* Imagen */}
+                        <img
+                        src={destino.imagen || "https://via.placeholder.com/100"}
+                        alt={destino.name || "Lugar"}
+                        className="img-thumbnail me-3"
+                        style={{
+                            width: "80px",
+                            height: "80px",
+                            objectFit: "cover",
+                            borderRadius: "8px",
+                        }}
+                        />
+                                     {/* Detalles del destino */}
+                    <div className="flex-grow-1">
+                        <strong style={{ fontSize: "1.1rem", color: "#333" }}>
+                            {destino.name || "Sin nombre"}
+                        </strong>
+                        <p style={{ margin: "0", fontSize: "0.9rem", color: "#666" }}>
+                            {destino.description || "Sin descripción"}
+                        </p>
+                        <p
+                            style={{
+                                margin: "0.5rem 0 0",
+                                fontSize: "0.9rem",
+                                color: "#28a745",
+                            }}
+                        >
+                            Costo: ${destino.costo || 0}
+                        </p>
+                    </div>
+                    {/* Botón de eliminación */}
+                    <button
+                        className="btn btn-danger btn-sm"
+                        style={{ marginLeft: "10px" }}
+                        onClick={() => handleRemoveDestino(index)}
+                    >
+                        <FaTrash />
                                     </button>
                                 </li>
                             ))}
@@ -132,7 +152,7 @@ function Home() {
                     <MapComponent
                         center={coordenadas}
                         selectedPlaces={selectedPlaces}
-                       // onAddPlace={(place) => handleAddToItinerary(place)}
+                        onAddPlace={(place) => handleAddToItinerary(place)}
                         onAddToItinerary={handleAddToItinerary}
                     />
                 </div>
