@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap  } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+
 
 // Iconos personalizados
 const defaultIcon = L.icon({
@@ -25,7 +26,16 @@ const selectedIcon = L.icon({
 
 L.Marker.prototype.options.icon = defaultIcon;
 
-const MapComponent = ({onAddPlace, onAddToItinerary, selectedPlaces =[] }) => {
+// Componente para actualizar la vista del mapa
+const ChangeView = ({ center }) => {
+    const map = useMap();
+    useEffect(() => {
+        map.setView([center.lat, center.lng], 14); // Ajusta el zoom según necesites
+    }, [center, map]);
+    return null;
+};
+
+const MapComponent = ({ center, onAddPlace, selectedPlaces = [] }) => {
     const [places, setPlaces] = useState([]);
 
     // Hook para manejar clics en el mapa
@@ -40,6 +50,9 @@ const MapComponent = ({onAddPlace, onAddToItinerary, selectedPlaces =[] }) => {
                     type: "Manual",
                 };
                 setPlaces((prevPlaces) => [...prevPlaces, newPlace]);
+                if (onAddPlace) {
+                    onAddPlace(newPlace); // Comunicamos el lugar al componente padre
+                }
             },
         });
         return null;
@@ -47,16 +60,27 @@ const MapComponent = ({onAddPlace, onAddToItinerary, selectedPlaces =[] }) => {
 
     useEffect(() => {
         const fetchPlaces = async () => {
-            const response = await fetch("http://127.0.0.1:5000/places?lat=-34.6037&lng=-58.3816&radius=5000");
-            const data = await response.json();
-            setPlaces(data);
+            try {
+                const response = await fetch(
+                    `http://127.0.0.1:5000/places?lat=${center.lat}&lng=${center.lng}&radius=5000`
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    setPlaces(data);
+                } else {
+                    console.error("Error al obtener los lugares desde el backend.");
+                }
+            } catch (err) {
+                console.error("Error al conectar con el backend:", err);
+            }
         };
 
         fetchPlaces();
-    }, []);
+    }, [center]);
 
     return (
-        <MapContainer center={[-34.6037, -58.3816]} zoom={14} style={{ height: "400px", width: "100%" }}>
+        <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: "400px", width: "100%" }}>
+             <ChangeView center={center} />
             <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -82,8 +106,8 @@ const MapComponent = ({onAddPlace, onAddToItinerary, selectedPlaces =[] }) => {
                         ) && (
                             <button
                                 className="btn btn-sm btn-primary mt-2"
-                                onClick={() => onAddPlace(place)}
-                            >x
+                                onClick={() => onAddPlace && onAddPlace(place)}
+                            >
                                 Agregar al Itinerario
                             </button>
                         )}
