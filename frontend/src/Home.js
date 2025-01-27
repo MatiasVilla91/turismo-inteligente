@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import MapComponent from "./MapComponent";
 import "./index.css";
-import { FaMapMarkerAlt, FaDollarSign, FaClock, FaSearch } from "react-icons/fa";
+import { FaMapMarkerAlt, FaDollarSign, FaClock, FaSearch, FaTrash } from "react-icons/fa";
 import { Modal, Button } from "react-bootstrap";
 
 function Home() {
@@ -14,24 +14,6 @@ function Home() {
     const [coordenadas, setCoordenadas] = useState({ lat: -34.6037, lng: -58.3816 });
     const [error, setError] = useState("");
     const [showModal, setShowModal] = useState(false);
-
-    // Cargar datos reales
-    useEffect(() => {
-        const fetchRealData = async () => {
-            try {
-                const response = await fetch("/real-data.json"); // Archivo JSON con datos reales
-                if (!response.ok) {
-                    throw new Error("Error al cargar los datos reales.");
-                }
-                const data = await response.json();
-                setItinerario({ destinos: data, presupuesto_total: 0 });
-            } catch (error) {
-                console.error("Error al cargar los datos reales:", error);
-            }
-        };
-
-        fetchRealData();
-    }, []);
 
     const handleSearchDestino = async () => {
         if (!destino) {
@@ -91,33 +73,52 @@ function Home() {
         }
     };
 
+    const handleAddToItinerary = (place) => {
+        if (!itinerario.destinos.some((item) => item.lat === place.lat && item.lng === place.lng)) {
+            setItinerario((prev) => ({
+                ...prev,
+                destinos: [...prev.destinos, place], // Agregar al array de destinos
+            }));
+        }
+    };
+    
+
+    const handleRemoveDestino = (index) => {
+        const updatedDestinos = itinerario.destinos.filter((_, i) => i !== index);
+        setItinerario({ ...itinerario, destinos: updatedDestinos });
+    };
+
     return (
-        <div className="d-flex flex-column" style={{ height: "100vh", overflow: "hidden" }}>
+        <div className="d-flex flex-column" style={{ height: "100vh" }}>
             <div className="d-flex flex-grow-1" style={{ overflow: "hidden" }}>
                 {/* Panel Lateral */}
                 <div className="sidebar bg-light p-4" style={{ width: "300px", overflowY: "auto" }}>
                     <h3 className="text-center">Tu Itinerario</h3>
                     {itinerario.destinos.length > 0 ? (
-                        <div className="row">
+                        <ul className="list-group">
                             {itinerario.destinos.map((destino, index) => (
-                                <div key={index} className="col-12 mb-3">
-                                    <div className="card shadow-sm h-100">
-                                        <img 
-                                            src={destino.imagen || "https://via.placeholder.com/300x200"} 
-                                            alt={destino.nombre} 
-                                            className="card-img-top"
-                                            style={{ height: "150px", objectFit: "cover" }}
-                                        />
-                                        <div className="card-body">
-                                            <h5 className="card-title">{destino.nombre}</h5>
-                                            <p className="card-text text-muted">{destino.descripcion}</p>
-                                            <p className="card-text">Costo: ${destino.costo}</p>
-                                            <Button variant="primary" className="w-100">Ver más</Button>
-                                        </div>
+                                <li key={index} className="list-group-item d-flex align-items-center" style={{ borderRadius: "8px", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)" }}>
+                                    <img 
+                                        src={destino.imagen || "https://via.placeholder.com/50"} 
+                                        alt={destino.nombre} 
+                                        className="img-thumbnail me-3" 
+                                        style={{ width: "50px", height: "50px", borderRadius: "8px" }}
+                                    />
+                                    <div className="flex-grow-1">
+                                        <strong style={{ fontSize: "1.1rem", color: "#333" }}>{destino.nombre}</strong>
+                                        <p style={{ margin: "0", fontSize: "0.9rem", color: "#666" }}>{destino.descripcion}</p>
+                                        <p style={{ margin: "0.5rem 0 0", fontSize: "0.9rem", color: "#28a745" }}>Costo: ${destino.costo}</p>
                                     </div>
-                                </div>
+                                    <button 
+                                        className="btn btn-danger btn-sm" 
+                                        style={{ marginLeft: "10px" }}
+                                        onClick={() => handleRemoveDestino(index)}
+                                    >
+                                        <FaTrash />
+                                    </button>
+                                </li>
                             ))}
-                        </div>
+                        </ul>
                     ) : (
                         <p className="text-muted">No hay destinos seleccionados aún.</p>
                     )}
@@ -127,14 +128,22 @@ function Home() {
                 </div>
 
                 {/* Mapa Principal */}
-                <div className="map-container flex-grow-1" style={{ height: "100%" }}>
+                <div className="map-container flex-grow-1" style={{ height: "200%" }}>
                     <MapComponent
                         center={coordenadas}
                         selectedPlaces={selectedPlaces}
+                       // onAddPlace={(place) => handleAddToItinerary(place)}
+                        onAddToItinerary={handleAddToItinerary}
                     />
                 </div>
             </div>
 
+            {/* Footer */}
+            <footer className="bg-dark text-white text-center py-2">
+                <small>© 2025 Turismo Inteligente. Todos los derechos reservados.</small>
+                <br />
+                <small>contacto@turismointeligente.com | LinkedIn | GitHub</small>
+            </footer>
 
             {/* Modal para el formulario */}
             <Modal show={showModal} onHide={() => setShowModal(false)}>

@@ -35,7 +35,7 @@ const ChangeView = ({ center }) => {
     return null;
 };
 
-const MapComponent = ({ center, onAddPlace, selectedPlaces = [] }) => {
+const MapComponent = ({ center, onAddPlace, selectedPlaces = [],onAddToItinerary }) => {
     const [places, setPlaces] = useState([]);
 
     // Hook para manejar clics en el mapa
@@ -77,6 +77,7 @@ const MapComponent = ({ center, onAddPlace, selectedPlaces = [] }) => {
 
         fetchPlaces();
     }, [center]);
+    
 
     return (
         <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: "400px", width: "100%" }}>
@@ -106,7 +107,7 @@ const MapComponent = ({ center, onAddPlace, selectedPlaces = [] }) => {
                         ) && (
                             <button
                                 className="btn btn-sm btn-primary mt-2"
-                                onClick={() => onAddPlace && onAddPlace(place)}
+                                onClick={() => onAddToItinerary(place)}
                             >
                                 Agregar al Itinerario
                             </button>
