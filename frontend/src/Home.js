@@ -14,74 +14,75 @@ function Home() {
     const [coordenadas, setCoordenadas] = useState({ lat: -34.6037, lng: -58.3816 });
     const [error, setError] = useState("");
     const [showModal, setShowModal] = useState(false);
+    const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("all");
+    const [category, setCategory] = useState("");
 
-    const handleSearchDestino = async () => {
-        if (!destino) {
-            setError("Por favor, ingresa un destino.");
-            return;
-        }
-        setError("");
-
-        try {
-            const response = await fetch(
-                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destino)}`
-            );
-
-            if (!response.ok) {
-                throw new Error("Error en la solicitud a la API de Nominatim.");
-            }
-
-            const data = await response.json();
-            if (data.length > 0) {
-                const { lat, lon } = data[0];
-                setCoordenadas({ lat: parseFloat(lat), lng: parseFloat(lon) });
-            } else {
-                setError("No se encontraron coordenadas para el destino ingresado.");
-            }
-        } catch (err) {
-            setError("Ocurrió un error al buscar el destino. Inténtalo de nuevo.");
-        }
+    const getImageForPlace = (placeName) => {
+        return `https://placehold.co/100x100?text=${encodeURIComponent(placeName)}`;
     };
 
-    const handleSubmit = async (e) => {
+    const handleSearchDestinoAndSubmit = async (e) => {
         e.preventDefault();
-        if (!intereses || presupuesto <= 0 || duracion <= 0 || !destino) {
+        if (!destino || !intereses || presupuesto <= 0 || duracion <= 0) {
             setError("Todos los campos son obligatorios.");
             return;
         }
         setError("");
 
         try {
-            const response = await fetch("http://127.0.0.1:5000/itinerarios", {
+            // Buscar el destino
+            const responseDestino = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destino)}`
+            );
+
+            if (!responseDestino.ok) {
+                throw new Error("Error en la solicitud a la API de Nominatim.");
+            }
+
+            const dataDestino = await responseDestino.json();
+            if (dataDestino.length > 0) {
+                const { lat, lon } = dataDestino[0];
+                setCoordenadas({ lat: parseFloat(lat), lng: parseFloat(lon) });
+            } else {
+                setError("No se encontraron coordenadas para el destino ingresado.");
+                return;
+            }
+
+            // Generar el itinerario
+            const responseItinerario = await fetch("http://127.0.0.1:5000/itinerarios", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ intereses, presupuesto, duracion, destino }),
             });
 
-            if (!response.ok) {
+            if (!responseItinerario.ok) {
                 throw new Error("Error al generar el itinerario.");
             }
 
-            const data = await response.json();
-            if (data.itinerario) {
-                setItinerario(data.itinerario);
+            const dataItinerario = await responseItinerario.json();
+            if (dataItinerario.itinerario) {
+                setItinerario(dataItinerario.itinerario);
             } else {
                 setError("No se pudo generar el itinerario. Intenta con otros parámetros.");
             }
         } catch (error) {
-            setError("Ocurrió un error al generar el itinerario: " + error.message);
+            setError("Ocurrió un error: " + error.message);
         }
     };
 
     const handleAddToItinerary = (place) => {
-    if (!itinerario.destinos.some((item) => item.lat === place.lat && item.lng === place.lng)) {
-        setItinerario((prev) => ({
-            ...prev,
-            destinos: [...prev.destinos, place], // Agregar al array de destinos
-        }));
-    }
-};
-
+        const newPlace = {
+            ...place,
+            imagen: getImageForPlace(place.name || "Lugar"),
+        };
+        console.log("Destino agregado:", newPlace);
+        if (!itinerario.destinos.some((item) => item.lat === place.lat && item.lng === place.lng)) {
+            setItinerario((prev) => ({
+                ...prev,
+                destinos: [...prev.destinos, newPlace],
+            }));
+        }
+    };
 
     const handleRemoveDestino = (index) => {
         const updatedDestinos = itinerario.destinos.filter((_, i) => i !== index);
@@ -91,50 +92,53 @@ function Home() {
     return (
         <div className="d-flex flex-column" style={{ height: "100vh" }}>
             <div className="d-flex flex-grow-1" style={{ overflow: "hidden" }}>
-                {/* Panel Lateral */}
                 <div className="sidebar bg-light p-4" style={{ width: "300px", overflowY: "auto" }}>
-                    <h3 className="text-center">Tu Itinerario</h3>
+                    <h3 className="text-center text-primary">Tu Itinerario</h3>
+                    <div className="alert alert-info text-center">
+                        <h4>¿Cómo usar la app?</h4>
+                        <p>1. Ingresá un destino y presioná "Buscar destino".</p>
+                        <p>2. Seleccioná tus intereses, presupuesto y duración.</p>
+                        <p>3. Presioná "Generar Itinerario" y explorá los lugares en el mapa.</p>
+                    </div>
+
                     {itinerario.destinos.length > 0 ? (
                         <ul className="list-group">
                             {itinerario.destinos.map((destino, index) => (
                                 <li key={index} className="list-group-item d-flex align-items-center" style={{ borderRadius: "8px", boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)" }}>
-                                     {/* Imagen */}
-                        <img
-                        src={destino.imagen || "https://via.placeholder.com/100"}
-                        alt={destino.name || "Lugar"}
-                        className="img-thumbnail me-3"
-                        style={{
-                            width: "80px",
-                            height: "80px",
-                            objectFit: "cover",
-                            borderRadius: "8px",
-                        }}
-                        />
-                                     {/* Detalles del destino */}
-                    <div className="flex-grow-1">
-                        <strong style={{ fontSize: "1.1rem", color: "#333" }}>
-                            {destino.name || "Sin nombre"}
-                        </strong>
-                        <p style={{ margin: "0", fontSize: "0.9rem", color: "#666" }}>
-                            {destino.description || "Sin descripción"}
-                        </p>
-                        <p
-                            style={{
-                                margin: "0.5rem 0 0",
-                                fontSize: "0.9rem",
-                                color: "#28a745",
-                            }}
-                        >
-                            Costo: ${destino.costo || 0}
-                        </p>
-                    </div>
-                    {/* Botón de eliminación */}
-                    <button
-                        className="btn btn-danger btn-sm"
-                        style={{ marginLeft: "10px" }}
-                        onClick={() => handleRemoveDestino(index)}
-                    >
-                        <FaTrash />
+                                    <img
+                                        src={destino.imagen || `https://placehold.co/100x100?text=${encodeURIComponent(destino.name)}`}
+                                        alt={destino.name || "Lugar"}
+                                        className="img-thumbnail me-3"
+                                        style={{
+                                            width: "80px",
+                                            height: "80px",
+                                            objectFit: "cover",
+                                            borderRadius: "8px",
+                                        }}
+                                    />
+                                    <div className="flex-grow-1">
+                                        <strong style={{ fontSize: "1.1rem", color: "#333" }}>
+                                            {destino.name || "Sin nombre"}
+                                        </strong>
+                                        <p style={{ margin: "0", fontSize: "0.9rem", color: "#666" }}>
+                                            {destino.description || "Sin descripción"}
+                                        </p>
+                                        <p
+                                            style={{
+                                                margin: "0.5rem 0 0",
+                                                fontSize: "0.9rem",
+                                                color: "#28a745",
+                                            }}
+                                        >
+                                            Costo: ${destino.costo || 0}
+                                        </p>
+                                    </div>
+                                    <button
+                                        className="btn btn-danger btn-sm"
+                                        style={{ marginLeft: "10px" }}
+                                        onClick={() => handleRemoveDestino(index)}
+                                    >
+                                        <FaTrash />
                                     </button>
                                 </li>
                             ))}
@@ -147,31 +151,41 @@ function Home() {
                     </Button>
                 </div>
 
-                {/* Mapa Principal */}
                 <div className="map-container flex-grow-1" style={{ height: "200%" }}>
                     <MapComponent
                         center={coordenadas}
                         selectedPlaces={selectedPlaces}
                         onAddPlace={(place) => handleAddToItinerary(place)}
                         onAddToItinerary={handleAddToItinerary}
+                        categoriaSeleccionada={categoriaSeleccionada}
                     />
                 </div>
             </div>
 
-            {/* Footer */}
-            <footer className="bg-dark text-white text-center py-2">
-                <small>© 2025 Turismo Inteligente. Todos los derechos reservados.</small>
-                <br />
-                <small>contacto@turismointeligente.com | LinkedIn | GitHub</small>
-            </footer>
+            <div className="mb-3">
+                <label htmlFor="categorias" className="form-label">Filtrar por categoría:</label>
+                <select
+                    id="categorias"
+                    className="form-select"
+                    value={category}
+                    onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+                >
+                    <option value="all">Todas</option>
+                    <option value="hotel">Hoteles</option>
+                    <option value="restaurant">Restaurantes</option>
+                    <option value="cafe">Cafés</option>
+                    <option value="bar">Bares</option>
+                    <option value="park">Parques</option>
+                    <option value="atracciones_turísticas">Atracciones Turísticas</option>
+                </select>
+            </div>
 
-            {/* Modal para el formulario */}
             <Modal show={showModal} onHide={() => setShowModal(false)}>
                 <Modal.Header closeButton>
                     <Modal.Title>Generar Itinerario</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
-                    <form onSubmit={handleSubmit}>
+                    <form onSubmit={handleSearchDestinoAndSubmit}>
                         {error && <p className="alert alert-danger">{error}</p>}
 
                         <div className="mb-3">
@@ -186,13 +200,6 @@ function Home() {
                                 onChange={(e) => setDestino(e.target.value)}
                                 placeholder="Ej: Berlín, París, Tokio"
                             />
-                            <button
-                                type="button"
-                                className="btn btn-secondary mt-2 w-100"
-                                onClick={handleSearchDestino}
-                            >
-                                <FaSearch className="me-2" /> Buscar destino
-                            </button>
                         </div>
 
                         <div className="mb-3">
@@ -240,7 +247,7 @@ function Home() {
                         </div>
 
                         <button type="submit" className="btn btn-primary w-100">
-                            Generar Itinerario
+                            Buscar destino y generar itinerario
                         </button>
                     </form>
                 </Modal.Body>

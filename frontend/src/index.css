@@ -36,5 +36,27 @@ html, body, #root {
 .map-container {
     border-radius: 15px;
     overflow: hidden;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(255, 0, 0, 0.1);
 }
+
+/* Estilo para el pin seleccionado */
+.leaflet-marker-icon.selected {
+    filter: hue-rotate(0deg) brightness(1.5); /* Cambia a rojo y aumenta el brillo */
+  }
+  
+ /*Cambia el cursor cuando pasas sobre un marcador */
+  .leaflet-marker-icon {
+    cursor: pointer;
+  }
+
+/*Animacion de los botones*/
+  button {
+    transition: all 0.3s ease-in-out;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+  }
+   
+  
