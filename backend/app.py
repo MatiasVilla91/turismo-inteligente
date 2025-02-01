@@ -4,8 +4,9 @@ from routes import register_blueprints
 from data import destinos_disponibles
 from services.itinerarios import generar_itinerario
 
+
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route('/')
 def home():

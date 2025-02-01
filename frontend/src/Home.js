@@ -101,6 +101,42 @@ function Home() {
                         <p>3. Presioná "Generar Itinerario" y explorá los lugares en el mapa.</p>
                     </div>
 
+
+
+                <div className="p-3">
+    <label htmlFor="categoria" className="form-label">
+        Seleccionar Categoría:
+    </label>
+    <select
+        id="categoria"
+        className="form-control"
+        value={categoriaSeleccionada}
+        onChange={(e) => {
+            console.log("📌 Nueva categoría seleccionada:", e.target.value);
+            setCategoriaSeleccionada(e.target.value);
+        }}
+    >
+        <option value="all">Todas</option>
+    <option value="cines">Cines</option>
+    <option value="museos">Museos</option>
+    <option value="arte">Arte</option>
+    <option value="parques">Parques</option>
+    <option value="restaurantes">Restaurantes</option>
+    <option value="bares">bares</option>
+    <option value="cafes">Cafés</option>
+    <option value="teatros">Teatros</option>
+    <option value="hoteles">Hoteles</option>
+    <option value="monumentos">Monumentos</option>
+    <option value="plazas">Plazas</option>
+    <option value="centros_comerciales">Shopping</option>
+    <option value="zoologicos">Zoologicos</option>
+    <option value="playas">Playas</option>
+    
+    </select>
+</div>
+
+
+
                     {itinerario.destinos.length > 0 ? (
                         <ul className="list-group">
                             {itinerario.destinos.map((destino, index) => (
@@ -157,29 +193,12 @@ function Home() {
                         selectedPlaces={selectedPlaces}
                         onAddPlace={(place) => handleAddToItinerary(place)}
                         onAddToItinerary={handleAddToItinerary}
-                        categoriaSeleccionada={categoriaSeleccionada}
+                        category={categoriaSeleccionada}
                     />
                 </div>
             </div>
 
-            <div className="mb-3">
-                <label htmlFor="categorias" className="form-label">Filtrar por categoría:</label>
-                <select
-                    id="categorias"
-                    className="form-select"
-                    value={category}
-                    onChange={(e) => setCategoriaSeleccionada(e.target.value)}
-                >
-                    <option value="all">Todas</option>
-                    <option value="hotel">Hoteles</option>
-                    <option value="restaurant">Restaurantes</option>
-                    <option value="cafe">Cafés</option>
-                    <option value="bar">Bares</option>
-                    <option value="park">Parques</option>
-                    <option value="atracciones_turísticas">Atracciones Turísticas</option>
-                </select>
-            </div>
-
+           
             <Modal show={showModal} onHide={() => setShowModal(false)}>
                 <Modal.Header closeButton>
                     <Modal.Title>Generar Itinerario</Modal.Title>
