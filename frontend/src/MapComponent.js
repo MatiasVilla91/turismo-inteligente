@@ -50,7 +50,7 @@ const MapComponentFilter = ({ center, onAddPlace, selectedPlaces = [], onAddToIt
                 const data = await response.json();
 
                 console.log("✅ Lugares obtenidos del backend:", data);
-                setPlaces(Array.isArray(data) ? data : []);
+                setPlaces(data);
             } catch (err) {
                 console.error("❌ Error al obtener los lugares:", err);
                 setPlaces([]);

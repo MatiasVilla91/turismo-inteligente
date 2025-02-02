@@ -15,7 +15,7 @@ def home():
 @app.route('/itinerarios', methods=['POST'])
 def itinerarios():
     datos_usuario = request.json
-    resultado = generar_itinerario(datos_usuario, destinos_disponibles)
+    resultado = generar_itinerario(datos_usuario)
     return jsonify(resultado)
 
 # Registrar blueprints
