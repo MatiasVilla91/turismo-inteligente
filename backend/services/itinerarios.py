@@ -13,6 +13,8 @@ def obtener_lugares_desde_overpass(ciudad, radio=5000):
     """
     url = f"https://overpass-api.de/api/interpreter?data={query}"
     response = requests.get(url)
+    print("🔍 URL de Overpass API:", url)
+    print("📩 Respuesta de Overpass API:", response.json())
     
     if response.status_code == 200:
         data = response.json()
@@ -28,7 +30,9 @@ def obtener_lugares_desde_overpass(ciudad, radio=5000):
     return []
 
 def generar_itinerario(datos_usuario):
-    ciudad = datos_usuario.get("ciudad", {"lat": "-31.4201", "lng": "-64.1888"})  # Córdoba por defecto
+    ciudad = datos_usuario.get("ciudad") 
+    if not ciudad or "lat" not in ciudad or "lng" not in ciudad:
+        ciudad = {"lat": "-31.4201", "lng": "-64.1888"}# Córdoba por defecto
     presupuesto = int(datos_usuario.get("presupuesto", 0))
     duracion = int(datos_usuario.get("duracion", 1))
     

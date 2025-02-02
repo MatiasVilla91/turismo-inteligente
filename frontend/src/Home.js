@@ -55,7 +55,13 @@ function Home() {
                 const responseItinerario = await fetch("http://127.0.0.1:5000/itinerarios", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ intereses, presupuesto, duracion, destino, lat: newCoords.lat, lng: newCoords.lng })
+                    body: JSON.stringify({
+                        ciudad: { lat: newCoords.lat, lng: newCoords.lng },  // 🔥 SE ARREGLA AQUÍ
+                        intereses,
+                        presupuesto,
+                        duracion,
+                        destino
+                    })
                 });
                 if (!responseItinerario.ok) throw new Error("Error al generar el itinerario.");
 

@@ -31,7 +31,7 @@ const MapClickHandler = ({ setPlaces, onAddPlace }) => {
             if (onAddPlace) onAddPlace(newPlace);
         }
     });
-    return null;
+    return null; 
 };
 
 const MapComponentFilter = ({ center, onAddPlace, selectedPlaces = [], onAddToItinerary, category }) => {
