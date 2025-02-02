@@ -60,7 +60,8 @@ function Home() {
                         intereses,
                         presupuesto,
                         duracion,
-                        destino
+                        destino,
+                        categoria
                     })
                 });
                 if (!responseItinerario.ok) throw new Error("Error al generar el itinerario.");
@@ -81,10 +82,32 @@ function Home() {
     };
 
     return (
+        
+        
         <div className="d-flex" style={{ height: "100vh" }}>
             {/* Barra lateral */}
             <div className="sidebar bg-light p-4" style={{ width: "300px", overflowY: "auto" }}>
+
                 <h3 className="text-center text-primary">Tu Itinerario</h3>
+                <Form.Group className="mb-3">
+                    <Form.Label><FaFilter /> Categoría</Form.Label>
+                    <Form.Select value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+                        <option value="all">Todos</option>
+                        <option value="cines">Cines</option>
+                        <option value="museos">Museos</option>
+                        <option value="arte">Arte</option>
+                        <option value="parques">Parques</option>
+                        <option value="cafes">Cafés</option>
+                        <option value="restaurantes">Restaurantes</option>
+                        <option value="bares">Bares</option>
+                        <option value="hoteles">Hoteles</option>
+                        <option value="centros_comerciales">Shopping</option>
+                        <option value="teatros">Teatros</option>
+                        <option value="monumentos">Monumentos</option>
+                        <option value="zoologicos">Zoológicos</option>
+                        <option value="playas">Playas</option>
+                    </Form.Select>
+                </Form.Group>
                 <Button onClick={() => setShowModal(true)} variant="primary" className="w-100 mb-3">
                     🎯 Generar Itinerario
                 </Button>
