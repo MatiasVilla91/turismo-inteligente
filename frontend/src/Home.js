@@ -62,7 +62,7 @@ function Home() {
                         intereses,
                         presupuesto,
                         duracion,
-                        destino,
+                        //destino,
                         categoria
                     })
                 });
@@ -73,9 +73,9 @@ function Home() {
                 console.log("📍 Respuesta del backend:", dataItinerario.itinerario);
 
                 if (dataItinerario?.itinerario?.destinos && Array.isArray(dataItinerario.itinerario.destinos)) {
-                    //const filteredPlaces = dataItinerario.itinerario.destinos.filter(place => 
-                    //    categoria === "all" || (place.categoria && place.categoria === categoria)
-                   // );
+                    const filteredPlaces = dataItinerario.itinerario.destinos.filter(place => 
+                        categoria === "all" || (place.categoria && place.categoria === categoria)
+                    );
                     setItinerario(dataItinerario.itinerario);
     
                     // 🔥 Forzar la actualización del estado
