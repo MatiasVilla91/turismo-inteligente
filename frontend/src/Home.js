@@ -42,10 +42,7 @@ function Home() {
                 const { lat, lon } = dataDestino[0];
                 const newCoords = { lat: parseFloat(lat), lng: parseFloat(lon) };
                 setCoordenadas(newCoords);
-                    // 🔥 Forzar la actualización del mapa
-                setTimeout(() => {
-                setCoordenadas({ lat: parseFloat(lat), lng: parseFloat(lon) });
-                 }, 100);
+                
 
 
                  
@@ -70,10 +67,14 @@ function Home() {
                 if (!responseItinerario.ok) throw new Error("Error al generar el itinerario.");
 
                 const dataItinerario = await responseItinerario.json();
-                console.log("📍 Respuesta del backend:", dataItinerario.itinerario);
+                console.log("📍 Respuesta del backend:", dataItinerario);
 
                 if (dataItinerario?.itinerario?.destinos && Array.isArray(dataItinerario.itinerario.destinos)) {
-                    const filteredPlaces = dataItinerario.itinerario.destinos.filter(place => 
+                    setItinerario(dataItinerario.itinerario);
+               // console.log("📌 Lugares seleccionados antes de setear:", selectedPlaces);
+                                    
+                
+                                    const filteredPlaces = dataItinerario.itinerario.destinos.filter(place => 
                         categoria === "all" || (place.categoria && place.categoria === categoria)
                     );
                     setItinerario(dataItinerario.itinerario);
@@ -89,9 +90,9 @@ function Home() {
             } else {
                 setError("No se encontraron coordenadas para el destino ingresado.");
             }
-        } catch (error) {
+            } catch (error) {
             setError("Ocurrió un error: " + error.message);
-        }
+            }
     };
 
     return (
@@ -100,9 +101,11 @@ function Home() {
              {/* 🔥 Agregamos el contenedor del mapa aquí */}
         <div style={{ flex: 1, position: "relative" }}>
             <MapContainerWithFilter 
+                key={coordenadas ? `${coordenadas.lat}-${coordenadas.lng}` : "default"} // Evita re-render innecesario
                 initialCenter={coordenadas || { lat: -31.4201, lng: -64.1888 }} 
                 categoria={categoria} 
-                selectedPlaces={selectedPlaces} 
+                selectedPlaces={selectedPlaces}
+                
             />
         </div>
             <ItineraryModal 
