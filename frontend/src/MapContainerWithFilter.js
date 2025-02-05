@@ -1,19 +1,27 @@
-import React, { useState } from "react";
-import MapComponentFilter from "./MapComponent"; // Asegúrate de que la ruta sea correcta
+import React from "react";
+import MapComponentFilter from "./MapComponent";
 
-const MapContainerWithFilter = ({ initialCenter }) => {
-    const [category, setCategory] = useState("all"); // Estado para la categoría seleccionada
+const MapContainerWithFilter = ({ initialCenter, categoria, setCategoria, selectedPlaces }) => {
+    if (!initialCenter) {
+        console.error("❌ Error: initialCenter es undefined en MapContainerWithFilter");
+        return <p>Error: No se pueden cargar los mapas.</p>;
+    }
 
     const handleCategoryChange = (event) => {
         const nuevaCategoria = event.target.value;
         console.log("🔄 Nueva categoría seleccionada:", nuevaCategoria);
-        setCategory(nuevaCategoria);
+        setCategoria(nuevaCategoria);
     };
 
     return (
-        
-            <MapComponentFilter  key={category} center={initialCenter} category={category}  />
-       
+        <>
+                <MapComponentFilter 
+                key={categoria} 
+                center={initialCenter} 
+                category={categoria} 
+                selectedPlaces={selectedPlaces} 
+            />
+        </>
     );
 };
 

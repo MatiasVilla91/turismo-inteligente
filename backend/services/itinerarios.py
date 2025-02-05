@@ -29,20 +29,39 @@ def obtener_lugares_desde_overpass(ciudad, radio=5000):
         return lugares
     return []
 
+def obtener_coordenadas(destino):
+    """Convierte el nombre de una ciudad en coordenadas (lat, lon)."""
+    url = f"https://nominatim.openstreetmap.org/search?format=json&q={destino}"
+    response = requests.get(url)
+    data = response.json()
+    
+    if data and len(data) > 0:
+        return {"lat": float(data[0]["lat"]), "lng": float(data[0]["lon"])}
+    
+    return None  
+
 def generar_itinerario(datos_usuario):
-    ciudad = datos_usuario.get("ciudad") 
+    destino = datos_usuario.get("destino")
+    ciudad = datos_usuario.get("ciudad")
+    print("📡 Coordenadas recibidas en el backend:", ciudad) 
+    # Si ciudad no tiene latitud y longitud, buscamos las coordenadas del destino
     if not ciudad or "lat" not in ciudad or "lng" not in ciudad:
-        ciudad = {"lat": "-31.4201", "lng": "-64.1888"}# Córdoba por defecto
+        if destino:
+            ciudad = obtener_coordenadas(destino)  # Busca coordenadas reales
+    if not ciudad:  # Si aún no tiene coordenadas, usa Córdoba por defecto
+        ciudad = {"lat": "-31.4201", "lng": "-64.1888"}
     presupuesto = int(datos_usuario.get("presupuesto", 0))
     duracion = int(datos_usuario.get("duracion", 1))
     
-    lugares = obtener_lugares_desde_overpass(ciudad)
+    lugares = obtener_lugares_desde_overpass(ciudad, radio=5000)
+    print("🔍 Buscando lugares en Overpass para:", ciudad)  # Verifica qué coordenadas usa
     if not lugares:
         return {"mensaje": "No se encontraron lugares disponibles.", "itinerario": None}
     
     lugares.sort(key=lambda x: x["costo"])  # Ordenamos por precio para ajustar al presupuesto
     
     itinerario = {"dias": []}
+    destinos = []  # 🔥 Lista para acumular todos los destinos
     total_gastado = 0
     comidas = ["Desayuno", "Almuerzo", "Cena"]
     comida_index = 0
@@ -67,17 +86,22 @@ def generar_itinerario(datos_usuario):
         if len(destinos_dia) > 2:
             dia_actual["noche"] = [destinos_dia[2]]
         
-        dia_actual["mediodía"].append({
+        comida = {
             "nombre": f"{comidas[comida_index]} recomendado",
             "costo": random.randint(5, 15),
             "tipo": "comida"
-        })
+        }
+        dia_actual["mediodía"].append(comida)
+        destinos.append(comida)  # 🔥 Agregar la comida al array destinos
         comida_index = (comida_index + 1) % 3
-        
+
         itinerario["dias"].append(dia_actual)
     
     return {
         "mensaje": "Itinerario generado con datos en tiempo real",
-        "itinerario": itinerario,
+        "itinerario": {
+            "dias": itinerario["dias"],
+            "destinos": destinos  # 🔥 Ahora `destinos` siempre existirá
+        },
         "presupuesto_total": total_gastado
     }

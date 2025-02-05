@@ -78,7 +78,7 @@ function Home() {
             imagen: getImageForPlace(place.name || "Lugar"),
         };
         console.log("Destino agregado:", newPlace);
-        if (!itinerario.destinos.some((item) => item.lat === place.lat && item.lng === place.lng)) {
+        if (!itinerario.destinos.((item) => item.lat === place.lat && item.lng === place.lng)) {
             setItinerario((prev) => ({
                 ...prev,
                 destinos: [...prev.destinos, newPlace],
