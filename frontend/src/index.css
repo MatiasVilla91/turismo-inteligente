@@ -58,3 +58,9 @@ button:hover {
   background-color: #0056b3;
   transform: scale(1.05);
 }
+
+
+.resaltado {
+  font-weight: bold;
+  color: #ff4500; /* Naranja intenso */
+}

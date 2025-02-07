@@ -2,7 +2,7 @@ import React from "react";
 import { Card, Button, Form } from "react-bootstrap";
 import { FaFilter } from "react-icons/fa";
 
-const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario }) => {
+const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, setHighlightedPlace = () => {} }) => {
     return (
         <div className="sidebar bg-light p-4" style={{ width: "300px", overflowY: "auto" }}>
             <h3 className="text-center text-primary">Tu Itinerario</h3>
@@ -14,8 +14,10 @@ const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario }) =
             </div>
             <Form.Group className="mb-3">
                 <Form.Label><FaFilter /> Categoría</Form.Label>
-                <Form.Select value={categoria} onChange={(e) => {        console.log("Nueva categoría seleccionada:", e.target.value);
-                    setCategoria(e.target.value)}}>
+                <Form.Select value={categoria} onChange={(e) => {        
+                    console.log("Nueva categoría seleccionada:", e.target.value);
+                    setCategoria(e.target.value);
+                }}>
                     <option value="all">Todos</option>
                     <option value="cines">Cines</option>
                     <option value="museos">Museos</option>
@@ -40,7 +42,12 @@ const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario }) =
                 <div key={index} className="mt-4">
                     <h4>🗓 Día {index + 1}</h4>
                     {Object.entries(dia).map(([momento, actividades]) => (
-                        <Card key={momento} className="mb-3 shadow-sm">
+                        <Card 
+                            key={momento} 
+                            className="mb-3 shadow-sm"
+                            onMouseEnter={() => setHighlightedPlace(actividades[0])}
+                            onMouseLeave={() => setHighlightedPlace(null)}
+                            onClick={() => setHighlightedPlace(actividades[0])}>
                             <Card.Body>
                                 <Card.Title>🕒 {momento.toUpperCase()}</Card.Title>
                                 {actividades.length > 0 ? (

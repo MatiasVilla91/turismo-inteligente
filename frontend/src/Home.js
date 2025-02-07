@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import MapContainerWithFilter from "./MapContainerWithFilter";
 import Sidebar from "./Sidebar";
 import ItineraryModal from "./ItineraryModal";
-//import MapContainerWithFilter from "./MapContainerWithFilter";
+
 
 function Home() {
     const [itinerario, setItinerario] = useState(null);
@@ -15,6 +15,8 @@ function Home() {
     const [categoria, setCategoria] = useState("all");
     const [coordenadas, setCoordenadas] = useState(null);
     const [selectedPlaces, setSelectedPlaces] = useState([]);
+    const [highlightedPlace, setHighlightedPlace] = useState(null);
+
 
     const handleSearchDestinoAndSubmit = async (e) => {
         e.preventDefault();
@@ -97,7 +99,7 @@ function Home() {
 
     return (
         <div className="d-flex" style={{ height: "100vh" }}>
-            <Sidebar setShowModal={setShowModal} setCategoria={setCategoria} categoria={categoria} error={error} itinerario={itinerario} />
+            <Sidebar setShowModal={setShowModal} setCategoria={setCategoria} categoria={categoria} error={error} itinerario={itinerario} setHighlightedPlace={setHighlightedPlace}/>
              {/* 🔥 Agregamos el contenedor del mapa aquí */}
         <div style={{ flex: 1, position: "relative" }}>
             <MapContainerWithFilter 
@@ -105,9 +107,11 @@ function Home() {
                 initialCenter={coordenadas || { lat: -31.4201, lng: -64.1888 }} 
                 categoria={categoria} 
                 selectedPlaces={selectedPlaces}
+                highlightedPlace={highlightedPlace}
                 
             />
         </div>
+        
             <ItineraryModal 
                 showModal={showModal} 
                 setShowModal={setShowModal} 
@@ -116,8 +120,12 @@ function Home() {
                 intereses={intereses} setIntereses={setIntereses} 
                 presupuesto={presupuesto} setPresupuesto={setPresupuesto} 
                 duracion={duracion} setDuracion={setDuracion} 
+
             />
+           
         </div>
+        
+        
     );
 }
 
