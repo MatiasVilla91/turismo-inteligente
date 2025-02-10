@@ -1,8 +1,20 @@
 import React from "react";
 import { Card, Button, Form } from "react-bootstrap";
 import { FaFilter } from "react-icons/fa";
+import Chatbot from "./Chatbot";
 
-const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, setHighlightedPlace = () => {} }) => {
+
+const getCategoryColor = (category) => {
+    const categoryColors = {
+        cines: "#FF4D4D", museos: "#4D79FF", arte: "#A64DFF", parques: "#4DFF88",
+        cafes: "#A66A4D", restaurantes: "#FFA64D", bares: "#FFD700", hoteles: "#FFD700",
+        centros_comerciales: "#808080", teatros: "#4D79FF", monumentos: "#FFD700",
+        zoologicos: "#4DFF88", playas: "#4DA6FF", default: "#4DA6FF"
+    };
+    return categoryColors[category?.toLowerCase().trim()] || "#4DA6FF";
+};
+
+const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, setHighlightedPlace, highlightedPlace }) => {
     return (
         <div className="sidebar bg-light p-4" style={{ width: "300px", overflowY: "auto" }}>
             <h3 className="text-center text-primary">Tu Itinerario</h3>
@@ -34,6 +46,7 @@ const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, set
                     <option value="playas">Playas</option>
                 </Form.Select>
             </Form.Group>
+            <Chatbot />   
             <Button onClick={() => setShowModal(true)} variant="primary" className="w-100 mb-3">
                 🎯 Generar Itinerario
             </Button>
@@ -42,24 +55,28 @@ const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, set
                 <div key={index} className="mt-4">
                     <h4>🗓 Día {index + 1}</h4>
                     {Object.entries(dia).map(([momento, actividades]) => (
-                        <Card 
-                            key={momento} 
-                            className="mb-3 shadow-sm"
-                            onMouseEnter={() => setHighlightedPlace(actividades[0])}
-                            onMouseLeave={() => setHighlightedPlace(null)}
-                            onClick={() => setHighlightedPlace(actividades[0])}>
-                            <Card.Body>
-                                <Card.Title>🕒 {momento.toUpperCase()}</Card.Title>
-                                {actividades.length > 0 ? (
-                                    actividades.map((actividad, idx) => (
-                                        <p key={idx}>📍 {actividad.nombre} - 💰 ${actividad.costo}</p>
-                                    ))
-                                ) : (
-                                    <p>⏳ Sin actividades programadas</p>
-                                )}
-                            </Card.Body>
-                        </Card>
-                    ))}
+                        actividades.map((actividad, idx) => {
+                            const cardColor = getCategoryColor(actividad.categoria);
+
+                                         
+                            return (
+                                <Card 
+                                    key={idx} 
+                                    className="mb-3 shadow-sm"
+                                    style={{ backgroundColor: highlightedPlace && highlightedPlace.nombre === actividad.nombre ? cardColor : "white", color: highlightedPlace && highlightedPlace.nombre === actividad.nombre ? "white" : "black", transition: "background-color 0.3s ease" }}
+                                    onMouseEnter={() => setHighlightedPlace(actividad)}
+                                    onMouseLeave={() => setHighlightedPlace(null)}
+                                    onClick={() => setHighlightedPlace(actividad)}
+                                    id={`card-${idx}`}
+                                >
+                                    <Card.Body>
+                                        <Card.Title>🕒 {momento.toUpperCase()}</Card.Title>
+                                        <p>📍 {actividad.nombre} - 💰 ${actividad.costo}</p>
+                                    </Card.Body>
+                                </Card>
+                            );
+                        }))
+                    )}
                 </div>
             ))}
         </div>

@@ -18,6 +18,7 @@ function Home() {
     const [highlightedPlace, setHighlightedPlace] = useState(null);
 
 
+
     const handleSearchDestinoAndSubmit = async (e) => {
         e.preventDefault();
         console.log("🚀 Botón presionado: Generando itinerario...", destino);
@@ -99,8 +100,14 @@ function Home() {
 
     return (
         <div className="d-flex" style={{ height: "100vh" }}>
-            <Sidebar setShowModal={setShowModal} setCategoria={setCategoria} categoria={categoria} error={error} itinerario={itinerario} setHighlightedPlace={setHighlightedPlace}/>
-             {/* 🔥 Agregamos el contenedor del mapa aquí */}
+            <Sidebar setShowModal={setShowModal}
+            setCategoria={setCategoria}
+            categoria={categoria}
+            error={error}
+            itinerario={itinerario} 
+            setHighlightedPlace={setHighlightedPlace }
+            highlightedPlace={highlightedPlace}/>
+            
         <div style={{ flex: 1, position: "relative" }}>
             <MapContainerWithFilter 
                 key={coordenadas ? `${coordenadas.lat}-${coordenadas.lng}` : "default"} // Evita re-render innecesario
@@ -108,7 +115,7 @@ function Home() {
                 categoria={categoria} 
                 selectedPlaces={selectedPlaces}
                 highlightedPlace={highlightedPlace}
-                
+                setHighlightedPlace={setHighlightedPlace} 
             />
         </div>
         

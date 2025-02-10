@@ -42,7 +42,7 @@ const ChangeView = ({ center }) => {
     return null;
 };
 
-const MapComponent = ({ center, category, highlightedPlace }) => {
+const MapComponent = ({ center, category, highlightedPlace, setHighlightedPlace }) => {
     const [places, setPlaces] = useState([]);
 
     useEffect(() => {
@@ -79,6 +79,23 @@ const MapComponent = ({ center, category, highlightedPlace }) => {
                     key={`${place.lat}-${place.lng}-${index}`}
                     position={[place.lat, place.lng]}
                     icon={createCustomIcon(place.categoria, highlightedPlace && highlightedPlace.nombre === place.name)}
+                    eventHandlers={{
+                        mouseover: (e) => {
+                            setHighlightedPlace && setHighlightedPlace(place);
+                            e.target.openPopup(); // Abre el popup al pasar el mouse
+                        },
+                        mouseout: (e) => {
+                            setHighlightedPlace && setHighlightedPlace(null);
+                            e.target.closePopup(); // Cierra el popup al quitar el mouse
+                        },
+                        click: (e) => {
+                            if (setHighlightedPlace) {
+                                setHighlightedPlace(place);
+                                document.getElementById(`card-${index}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                e.target.setBouncingOptions({ bounceHeight: 10, bounceSpeed: 60 }).bounce(3); // Agregar animación de rebote
+                            }
+                        }
+                    }}
                 >
                     <Popup>
                         <strong>{place.name}</strong>
