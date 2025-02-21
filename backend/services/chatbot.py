@@ -134,13 +134,24 @@ def consultar_overpass(ciudad, categoria):
 
 
 def limpiar_respuesta_hf(mensaje, respuesta_hf):
-    """Limpia la respuesta de Hugging Face para evitar repeticiones del mensaje original."""
+    """Elimina frases genéricas y hace que la respuesta suene más natural."""
     respuesta_hf = respuesta_hf.replace(mensaje, "").strip()
-    
-    # Eliminar espacios extra y cortar respuestas muy largas
-    return re.sub(r"\s+", " ", respuesta_hf)
 
-def obtener_respuesta_huggingface(mensaje):
+    frases_a_eliminar = [
+        "Háganos saber si tiene otras preferencias o requisitos.",
+        "Espero que esta información le sea útil.",
+        "Será un placer ayudarle con su reserva.",
+        "Hacemos que su estadía sea realmente memorable."
+    ]
+
+    for frase in frases_a_eliminar:
+        respuesta_hf = respuesta_hf.replace(frase, "").strip()
+
+    return re.sub(r"\s+", " ", respuesta_hf)[:275]  # Limita la longitud máxima
+
+
+
+#def obtener_respuesta_huggingface(mensaje):
     """Consulta un modelo de Hugging Face para obtener una respuesta conversacional con mejor manejo de errores."""
     if not mensaje:
         return "Error: Mensaje vacío."
@@ -174,6 +185,47 @@ def obtener_respuesta_huggingface(mensaje):
         return "El servidor de IA tardó demasiado en responder. Inténtalo de nuevo más tarde."
     except requests.RequestException as e:
         return f"Error al procesar la consulta: {str(e)}"
+
+def obtener_respuesta_huggingface(mensaje):
+    """Genera una respuesta más natural y específica usando Hugging Face."""
+    if not mensaje:
+        return "Error: Mensaje vacío."
+
+    prompt = f"""
+    Actúa como un asistente de viajes útil y responde de manera clara y natural. No uses frases genéricas ni demasiado formales.
+    
+    Usuario: {mensaje}
+    Chatbot:
+    """
+
+    data = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 400,
+            "return_full_text": False,
+            "temperature": 0.5,  # Permite respuestas más naturales
+            "top_p": 0.85,
+            "repetition_penalty": 1.2
+        }
+    }
+
+    try:
+        response = requests.post(API_URL, headers=HEADERS, json=data, timeout=30)
+        response.raise_for_status()
+        respuesta_json = response.json()
+
+        if isinstance(respuesta_json, list) and "generated_text" in respuesta_json[0]:
+            return limpiar_respuesta_hf(mensaje, respuesta_json[0]["generated_text"])
+        elif "error" in respuesta_json:
+            return "Parece que hay un problema con el servicio. Inténtalo más tarde."
+        else:
+            return "No pude generar una respuesta válida."
+
+    except requests.Timeout:
+        return "El servidor tardó demasiado en responder. Inténtalo de nuevo."
+    except requests.RequestException as e:
+        return f"Error al procesar la consulta: {str(e)}"
+
 
     
 
