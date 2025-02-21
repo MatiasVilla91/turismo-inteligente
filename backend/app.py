@@ -6,6 +6,8 @@ from services.itinerarios import generar_itinerario
 from services.chatbot import register_chatbot  # Importar el chatbot
 
 
+
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 

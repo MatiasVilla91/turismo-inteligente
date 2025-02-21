@@ -6,6 +6,7 @@ from deep_translator import GoogleTranslator
 import re
 import pickle
 from unidecode import unidecode
+from database import guardar_mensaje, obtener_historial
 
 # Cargar variables de entorno desde .env
 load_dotenv()
@@ -192,11 +193,30 @@ def obtener_respuesta_huggingface(mensaje):
         return "Error: Mensaje vacío."
 
     prompt = f"""
-    Actúa como un asistente de viajes útil y responde de manera clara y natural. No uses frases genéricas ni demasiado formales.
-    
-    Usuario: {mensaje}
-    Chatbot:
-    """
+Responde como un asistente de viajes inteligente. Sé claro, directo y conversacional. No uses frases genéricas ni demasiado formales.
+
+1. Si el usuario menciona un destino, usa ese lugar en tu respuesta.
+2. Si no menciona un destino, pídele que lo especifique.
+3. Si menciona fechas, úsalas en la respuesta.
+4. Si no menciona fechas, pregúntale si ya tiene alguna en mente.
+5. Si menciona presupuesto, recomienda opciones en su rango.
+6. Si no menciona presupuesto, pregúntale si busca algo económico, medio o lujoso.
+7. Si pregunta por hoteles, sugiere 3 opciones con ubicación y precio estimado.
+8. Si pregunta por actividades, sugiere lugares turísticos y experiencias locales.
+
+Ejemplo:
+Usuario: "Voy a Madrid y necesito un hotel."
+Chatbot: "En Madrid tienes estas opciones: 
+- Hotel Gran Vía ($80/noche) → Cerca del centro, desayuno incluido.
+- Hostal Malasaña ($40/noche) → Económico, ideal para mochileros.
+- Hotel Ritz ($250/noche) → Lujo con spa y vistas panorámicas.
+¿Te gustaría más detalles?"
+
+Ahora responde esta consulta:
+Usuario: {mensaje}
+Chatbot:
+"""
+
 
     data = {
         "inputs": prompt,
@@ -247,11 +267,27 @@ def chatbot():
     if not data or "mensaje" not in data:
         return jsonify({"respuesta": "Error: El JSON enviado no tiene el campo 'mensaje'."})
 
+    user_id = data.get("user_id", "default")  # Identificar al usuario
     mensaje_usuario = data.get("mensaje", "").strip()
 
     if not mensaje_usuario:
         return jsonify({"respuesta": "Por favor, envía una consulta válida."})
 
+    # 🧠 OBTENER HISTORIAL DEL USUARIO
+    historial = obtener_historial(user_id)
+
+    # 📝 CONSTRUIR EL CONTEXTO DEL CHATBOT
+    contexto = "\n".join(historial)  # Se usa el historial previo
+    prompt = f"""
+    {contexto}
+    Usuario: {mensaje_usuario}
+    Chatbot:
+    """
+    print(f"🟢 MENSAJE RECIBIDO: {mensaje_usuario}")  # 🔥 VERIFICACIÓN
+
+    # 🔍 DETECTAR INTENCIÓN Y CIUDAD
+    categoria_detectada, ciudad_detectada = detectar_intencion(mensaje_usuario)
+        
     # Detectar intención y ciudad
     categoria_detectada, ciudad_detectada = detectar_intencion(mensaje_usuario)
 
@@ -261,6 +297,7 @@ def chatbot():
         # Si Overpass encuentra lugares, los mostramos de manera clara
         if lugares and len(lugares) > 0 and "Error" not in lugares[0]:
             respuesta = f"En {ciudad_detectada}, puedes encontrar {categoria_detectada} en:\n- " + "\n- ".join(lugares[:7])  # Mostramos hasta 5 lugares
+            guardar_mensaje(user_id, mensaje_usuario, respuesta)
             return jsonify({"respuesta": respuesta})
 
         # Si Overpass no encontró nada, pero tenemos una intención, damos una respuesta más humana
@@ -271,6 +308,11 @@ def chatbot():
 
     # Traducimos la respuesta
     respuesta_traducida = traducir_a_espanol(respuesta)
+    
+    # 📝 GUARDAR EL MENSAJE Y RESPUESTA EN POSTGRESQL
+    print(f"🔹 INTENTANDO GUARDAR RESPUESTA: {respuesta_traducida}")  # 🔥 VERIFICACIÓN
+    guardar_mensaje(user_id, mensaje_usuario, respuesta_traducida)
+    print(f"✅ RESPUESTA GUARDADA EN BD: {respuesta_traducida}")  # 🔥 VERIFICACIÓN FINAL
     
     # Si Hugging Face responde con un artículo largo, lo acortamos
     #if len(respuesta_traducida) > 300:
