@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MapContainerWithFilter from "./MapContainerWithFilter";
 import Sidebar from "./Sidebar";
 import ItineraryModal from "./ItineraryModal";
+import RegisterModal from "./RegisterModal";  // 🔥 Importamos el modal
 
 
 function Home() {
@@ -17,6 +18,20 @@ function Home() {
     const [selectedPlaces, setSelectedPlaces] = useState([]);
     const [highlightedPlace, setHighlightedPlace] = useState(null);
 
+    // Estado para el usuario
+    const [userId, setUserId] = useState("");
+    const [showRegisterModal, setShowRegisterModal] = useState(false);
+
+    // 🔥 Verificar si el usuario ya está registrado al cargar la app
+    useEffect(() => {
+        let storedUserId = localStorage.getItem("user_id");
+
+        if (!storedUserId) {
+            setShowRegisterModal(true); // 🔥 Si no hay usuario registrado, mostrar el modal
+        } else {
+            setUserId(storedUserId);
+        }
+    }, []);
 
 
     const handleSearchDestinoAndSubmit = async (e) => {
@@ -99,16 +114,14 @@ function Home() {
     };
 
     return (
-        <div className="d-flex" style={{ height: "100vh" }}>
-            <Sidebar setShowModal={setShowModal}
-            setCategoria={setCategoria}
-            categoria={categoria}
-            error={error}
-            itinerario={itinerario} 
-            setHighlightedPlace={setHighlightedPlace }
-            highlightedPlace={highlightedPlace}/>
+
+        
+
             
-        <div style={{ flex: 1, position: "relative" }}>
+
+        <div className="d-flex" style={{ height: "100vh" }}>
+            <div style={{ flex: 1, position: "relative" }}>
+            
             <MapContainerWithFilter 
                 key={coordenadas ? `${coordenadas.lat}-${coordenadas.lng}` : "default"} // Evita re-render innecesario
                 initialCenter={coordenadas || { lat: -31.4201, lng: -64.1888 }} 
@@ -119,7 +132,18 @@ function Home() {
             />
         </div>
         
-            <ItineraryModal 
+            <Sidebar setShowModal={setShowModal}
+            setCategoria={setCategoria}
+            categoria={categoria}
+            error={error}
+            itinerario={itinerario} 
+            setHighlightedPlace={setHighlightedPlace }
+            highlightedPlace={highlightedPlace}/>
+            
+            
+        
+        
+                <ItineraryModal 
                 showModal={showModal} 
                 setShowModal={setShowModal} 
                 handleSearchDestinoAndSubmit={handleSearchDestinoAndSubmit} 
@@ -128,9 +152,15 @@ function Home() {
                 presupuesto={presupuesto} setPresupuesto={setPresupuesto} 
                 duracion={duracion} setDuracion={setDuracion} 
 
-            />
-           
-        </div>
+            />  
+
+          
+
+                   </div>
+        
+
+
+        
         
         
     );

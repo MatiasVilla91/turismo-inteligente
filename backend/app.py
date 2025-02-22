@@ -4,6 +4,7 @@ from routes import register_blueprints
 from data import destinos_disponibles
 from services.itinerarios import generar_itinerario
 from services.chatbot import register_chatbot  # Importar el chatbot
+from services.auth import auth_bp  # Importar autenticación
 
 
 
@@ -25,7 +26,7 @@ def itinerarios():
 def initialize_app():
     register_blueprints(app)
     register_chatbot(app)  # 🔹 Integrar el chatbot en la app
-
+    app.register_blueprint(auth_bp)  # 🔹 Registrar la autenticación
 
 if __name__ == '__main__':
     initialize_app()

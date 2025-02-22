@@ -16,7 +16,7 @@ const getCategoryColor = (category) => {
 
 const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, setHighlightedPlace, highlightedPlace }) => {
     return (
-        <div className="sidebar bg-light p-4" style={{ width: "300px", overflowY: "auto" }}>
+        <div className="sidebar bg-light p-4" style={{ width: "500px", overflowY: "auto" }}>
             <h3 className="text-center text-primary">Tu Itinerario</h3>
             <div className="alert alert-info text-center">
                 <h4>¿Cómo usar la app?</h4>

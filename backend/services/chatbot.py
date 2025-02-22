@@ -221,9 +221,9 @@ Chatbot:
     data = {
         "inputs": prompt,
         "parameters": {
-            "max_new_tokens": 400,
+            "max_new_tokens": 1000,
             "return_full_text": False,
-            "temperature": 0.5,  # Permite respuestas más naturales
+            "temperature": 0.8,  # Permite respuestas más naturales
             "top_p": 0.85,
             "repetition_penalty": 1.2
         }
@@ -267,7 +267,7 @@ def chatbot():
     if not data or "mensaje" not in data:
         return jsonify({"respuesta": "Error: El JSON enviado no tiene el campo 'mensaje'."})
 
-    user_id = data.get("user_id", "default")  # Identificar al usuario
+    user_id = data.get("user_id")  # Identificar al usuario , "default"
     mensaje_usuario = data.get("mensaje", "").strip()
 
     if not mensaje_usuario:
@@ -288,38 +288,38 @@ def chatbot():
     # 🔍 DETECTAR INTENCIÓN Y CIUDAD
     categoria_detectada, ciudad_detectada = detectar_intencion(mensaje_usuario)
         
-    # Detectar intención y ciudad
-    categoria_detectada, ciudad_detectada = detectar_intencion(mensaje_usuario)
-
     if ciudad_detectada and categoria_detectada:
         lugares = consultar_overpass(ciudad_detectada, categoria_detectada)
 
-        # Si Overpass encuentra lugares, los mostramos de manera clara
         if lugares and len(lugares) > 0 and "Error" not in lugares[0]:
-            respuesta = f"En {ciudad_detectada}, puedes encontrar {categoria_detectada} en:\n- " + "\n- ".join(lugares[:7])  # Mostramos hasta 5 lugares
-            guardar_mensaje(user_id, mensaje_usuario, respuesta)
-            return jsonify({"respuesta": respuesta})
+            coordenadas = []
+            
+            # Obtener coordenadas de los primeros lugares
+            for lugar in lugares[:5]:  # Limitamos a 5 resultados
+                try:
+                    lat, lon = obtener_coordenadas(lugar.split("(")[0].strip())  # Extraer solo el nombre
+                    if lat and lon:
+                        coordenadas.append({"nombre": lugar, "lat": lat, "lon": lon})
+                except:
+                    continue
 
-        # Si Overpass no encontró nada, pero tenemos una intención, damos una respuesta más humana
-        return jsonify({"respuesta": f"No encontré lugares exactos para {categoria_detectada} en {ciudad_detectada},  preguntame de otra manera."})
+            respuesta = f"En {ciudad_detectada}, puedes encontrar {categoria_detectada} en:\n- " + "\n- ".join(lugares[:5])
+            guardar_mensaje(user_id, mensaje_usuario, respuesta)
+            
+            return jsonify({"respuesta": respuesta, "coordenadas": coordenadas})
+
+        return jsonify({"respuesta": f"No encontré lugares exactos para {categoria_detectada} en {ciudad_detectada}, intenta preguntarme de otra manera."})
 
     # Si no detectamos ciudad ni intención clara, usamos Hugging Face como fallback
     respuesta = obtener_respuesta_huggingface(mensaje_usuario)
-
-    # Traducimos la respuesta
     respuesta_traducida = traducir_a_espanol(respuesta)
-    
-    # 📝 GUARDAR EL MENSAJE Y RESPUESTA EN POSTGRESQL
-    print(f"🔹 INTENTANDO GUARDAR RESPUESTA: {respuesta_traducida}")  # 🔥 VERIFICACIÓN
-    guardar_mensaje(user_id, mensaje_usuario, respuesta_traducida)
-    print(f"✅ RESPUESTA GUARDADA EN BD: {respuesta_traducida}")  # 🔥 VERIFICACIÓN FINAL
-    
-    # Si Hugging Face responde con un artículo largo, lo acortamos
-    #if len(respuesta_traducida) > 300:
-        #respuesta_traducida = respuesta_traducida[:500] + "..."
 
-        
-    return jsonify({"respuesta": respuesta_traducida})
+    guardar_mensaje(user_id, mensaje_usuario, respuesta_traducida)
+
+    return jsonify({"respuesta": respuesta_traducida, "coordenadas": []})  # Enviar coordenadas vacías si no se encontraron
+    
+    
+   
 
 
 # Registrar el blueprint en la aplicación Flask

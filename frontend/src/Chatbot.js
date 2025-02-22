@@ -1,10 +1,23 @@
 // Chatbot.js - Componente de chat en React
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const Chatbot = () => {
+const Chatbot = ({ setCoordenadas }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
+    const [userId, setUserId] = useState("");
+
+    // Obtener user_id de localStorage al cargar el componente
+    useEffect(() => {
+        let storedUserId = localStorage.getItem("user_id");
+
+        if (!storedUserId) {
+            storedUserId = "user_" + Math.random().toString(36).substring(7); // Generar un ID aleatorio
+            localStorage.setItem("user_id", storedUserId);
+        }
+
+        setUserId(storedUserId);
+    }, []);
 
     const sendMessage = async () => {
         if (!input.trim()) return;
@@ -13,11 +26,18 @@ const Chatbot = () => {
         setMessages([...messages, userMessage]);
 
         try {
-            const response = await axios.post("http://localhost:5000/chatbot", { mensaje: input });
+            const response = await axios.post("http://localhost:5000/chatbot", { 
+                user_id: userId, // 🔥 Ahora enviamos el user_id
+                mensaje: input 
+            });
+
             const botMessage = { sender: "bot", text: response.data.respuesta };
             setMessages(prevMessages => [...prevMessages, botMessage]);
+            // 🚀 Si el chatbot devuelve coordenadas, las pasamos al mapa
+            if (response.data.coordenadas.length > 0) {
+                setCoordenadas((prevCoords) => [...prevCoords, ...response.data.coordenadas]);}
         } catch (error) {
-            console.error("Error al enviar mensaje al chatbot", error);
+            console.error("❌ Error al enviar mensaje al chatbot:", error);
         }
 
         setInput("");
