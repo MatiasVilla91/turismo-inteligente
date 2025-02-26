@@ -326,4 +326,4 @@ def chatbot():
 
 # Registrar el blueprint en la aplicación Flask
 def register_chatbot(app):
-    app.register_blueprint(chatbot_bp)
+    app.register_blueprint(chatbot_bp)  

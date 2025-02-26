@@ -51,8 +51,8 @@ def obtener_historial(user_id, limite=5):
 def consultar_db(query, params):
     """Ejecuta una consulta SQL en la base de datos."""
     try:
-        conn = get_db_connection()  # Asegúrate de que esta función esté definida
-        cursor = conn.cursor(dictionary=True)
+        conn = conectar_db()  # Asegúrate de que esta función esté definida
+        cursor = conn.cursor()
         cursor.execute(query, params)
         result = cursor.fetchall()
         conn.close()

@@ -337,9 +337,6 @@ def generar_respuesta_formateada(ciudad, categoria, lugares):
 
     return respuesta
 
-
-
-
 @chatbot_bp.route('/chatbot', methods=['POST'])
 def chatbot():
     data = request.json
