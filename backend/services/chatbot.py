@@ -7,6 +7,7 @@ import re
 import pickle
 from unidecode import unidecode
 from database import guardar_mensaje, obtener_historial
+from functools import lru_cache
 
 # Cargar variables de entorno desde .env
 load_dotenv()
@@ -95,11 +96,11 @@ def detectar_intencion(mensaje):
 
     return categoria_detectada, ciudad_detectada
 
+@lru_cache(maxsize=50)  # Guarda los últimos 50 resultados
 def consultar_overpass(ciudad, categoria):
-    """Consulta Overpass API para obtener lugares de una categoría en una ciudad, limitando resultados y filtrando correctamente."""
+    """Consulta Overpass API para obtener lugares de una categoría en una ciudad, evitando llamadas repetidas."""
     overpass_url = "http://overpass-api.de/api/interpreter"
     tipos = CATEGORIAS_LUGARES.get(categoria, ["tourism"])
-
     consulta_tipos = "\n".join(f'node["{tipo}"](area.searchArea);' for tipo in tipos)
 
     query = f"""
@@ -112,14 +113,13 @@ def consultar_overpass(ciudad, categoria):
     """
 
     try:
-        response = requests.get(overpass_url, params={"data": query})
+        response = requests.get(overpass_url, params={"data": query}, timeout=30)
         response.raise_for_status()
         data = response.json()
 
         lugares = []
         for elem in data.get("elements", [])[:10]:  # Limitar a 10 resultados
             tags = elem.get("tags", {})
-
             nombre = tags.get("name", "Nombre desconocido")
             direccion = tags.get("addr:street", "Dirección no disponible")
             tipo = tags.get("amenity", tags.get("tourism", "Categoría desconocida")).replace("_", " ").capitalize()
@@ -188,43 +188,24 @@ def limpiar_respuesta_hf(mensaje, respuesta_hf):
         return f"Error al procesar la consulta: {str(e)}"
 
 def obtener_respuesta_huggingface(mensaje):
-    """Genera una respuesta más natural y específica usando Hugging Face."""
+    """Genera una respuesta más natural y específica usando Hugging Face con mejor manejo de errores."""
     if not mensaje:
-        return "Error: Mensaje vacío."
+        return "Por favor, dime más detalles para poder ayudarte."
 
     prompt = f"""
 Responde como un asistente de viajes inteligente. Sé claro, directo y conversacional. No uses frases genéricas ni demasiado formales.
 
-1. Si el usuario menciona un destino, usa ese lugar en tu respuesta.
-2. Si no menciona un destino, pídele que lo especifique.
-3. Si menciona fechas, úsalas en la respuesta.
-4. Si no menciona fechas, pregúntale si ya tiene alguna en mente.
-5. Si menciona presupuesto, recomienda opciones en su rango.
-6. Si no menciona presupuesto, pregúntale si busca algo económico, medio o lujoso.
-7. Si pregunta por hoteles, sugiere 3 opciones con ubicación y precio estimado.
-8. Si pregunta por actividades, sugiere lugares turísticos y experiencias locales.
-
-Ejemplo:
-Usuario: "Voy a Madrid y necesito un hotel."
-Chatbot: "En Madrid tienes estas opciones: 
-- Hotel Gran Vía ($80/noche) → Cerca del centro, desayuno incluido.
-- Hostal Malasaña ($40/noche) → Económico, ideal para mochileros.
-- Hotel Ritz ($250/noche) → Lujo con spa y vistas panorámicas.
-¿Te gustaría más detalles?"
-
-Ahora responde esta consulta:
 Usuario: {mensaje}
 Chatbot:
 """
 
-
     data = {
         "inputs": prompt,
         "parameters": {
-            "max_new_tokens": 1000,
+            "max_new_tokens": 500,
             "return_full_text": False,
-            "temperature": 0.8,  # Permite respuestas más naturales
-            "top_p": 0.85,
+            "temperature": 0.7,
+            "top_p": 0.9,
             "repetition_penalty": 1.2
         }
     }
@@ -237,17 +218,16 @@ Chatbot:
         if isinstance(respuesta_json, list) and "generated_text" in respuesta_json[0]:
             return limpiar_respuesta_hf(mensaje, respuesta_json[0]["generated_text"])
         elif "error" in respuesta_json:
-            return "Parece que hay un problema con el servicio. Inténtalo más tarde."
+            return "Lo siento, parece que mi servicio de IA está ocupado. ¿Quieres que intente darte una respuesta alternativa?"
         else:
             return "No pude generar una respuesta válida."
 
     except requests.Timeout:
-        return "El servidor tardó demasiado en responder. Inténtalo de nuevo."
+        return "El servidor tardó demasiado en responder. ¿Quieres que intente darte una respuesta alternativa?"
     except requests.RequestException as e:
-        return f"Error al procesar la consulta: {str(e)}"
+        return f"Hubo un problema con el servicio de IA: {str(e)}"
 
 
-    
 
 def traducir_a_espanol(texto):
     """Traduce el texto al español y resume si es demasiado largo."""
@@ -258,6 +238,15 @@ def traducir_a_espanol(texto):
     except Exception as e:
         print(f"Error al traducir: {e}")
         return texto
+
+def obtener_historial(user_id, limite=5):
+    """Obtiene los últimos 5 mensajes del usuario para contexto en la conversación."""
+    try:
+        historial = consultar_db(f"SELECT mensaje FROM historial WHERE user_id = %s ORDER BY timestamp DESC LIMIT %s", (user_id, limite))
+        return [h["mensaje"] for h in historial] if historial else []
+    except Exception as e:
+        print(f"Error obteniendo historial: {e}")
+        return []
 
 
 @chatbot_bp.route('/chatbot', methods=['POST'])
