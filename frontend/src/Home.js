@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from "react";
 import MapContainerWithFilter from "./MapContainerWithFilter";
 import Sidebar from "./Sidebar";
 import ItineraryModal from "./ItineraryModal";
-import RegisterModal from "./RegisterModal";  // 🔥 Importamos el modal
+import Chatbot from "./Chatbot";
 
 
 function Home() {
@@ -138,7 +139,8 @@ function Home() {
             error={error}
             itinerario={itinerario} 
             setHighlightedPlace={setHighlightedPlace }
-            highlightedPlace={highlightedPlace}/>
+            highlightedPlace={highlightedPlace}
+            coordenadas={setCoordenadas}/>
             
             
         

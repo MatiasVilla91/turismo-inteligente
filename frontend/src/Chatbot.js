@@ -35,8 +35,10 @@ const Chatbot = ({ setCoordenadas }) => {
             setMessages(prevMessages => [...prevMessages, botMessage]);
             // 🚀 Si el chatbot devuelve coordenadas, las pasamos al mapa
             if (response.data.coordenadas.length > 0) {
-                setCoordenadas((prevCoords) => [...prevCoords, ...response.data.coordenadas]);}
-        } catch (error) {
+                const newCenter = response.data.coordenadas[0]; // Tomamos la primera coordenada
+                setCoordenadas(newCenter); // Movemos el mapa a la nueva coordenada
+            }
+            } catch (error) {
             console.error("❌ Error al enviar mensaje al chatbot:", error);
         }
 

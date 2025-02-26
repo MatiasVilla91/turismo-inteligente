@@ -14,7 +14,7 @@ const getCategoryColor = (category) => {
     return categoryColors[category?.toLowerCase().trim()] || "#4DA6FF";
 };
 
-const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, setHighlightedPlace, highlightedPlace }) => {
+const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, setHighlightedPlace, highlightedPlacem, setCoordenadas}) => {
     return (
         <div className="sidebar bg-light p-4" style={{ width: "500px", overflowY: "auto" }}>
             <h3 className="text-center text-primary">Tu Itinerario</h3>
@@ -46,7 +46,14 @@ const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, set
                     <option value="playas">Playas</option>
                 </Form.Select>
             </Form.Group>
-            <Chatbot />   
+            {/* ✅ Pasamos `setCoordenadasChatbot` a Chatbot */}
+            <Chatbot setCoordenadas={(newCoords) => {
+    console.log("📡 El chatbot detectó esta ciudad:", newCoords);
+    setCoordenadas(newCoords);  // 🔹 Se envía la ciudad correctamente
+}} />
+
+                
+               
             <Button onClick={() => setShowModal(true)} variant="primary" className="w-100 mb-3">
                 🎯 Generar Itinerario
             </Button>
@@ -63,7 +70,7 @@ const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, set
                                 <Card 
                                     key={idx} 
                                     className="mb-3 shadow-sm"
-                                    style={{ backgroundColor: highlightedPlace && highlightedPlace.nombre === actividad.nombre ? cardColor : "white", color: highlightedPlace && highlightedPlace.nombre === actividad.nombre ? "white" : "black", transition: "background-color 0.3s ease" }}
+                                    //style={{ backgroundColor: highlightedPlace && highlightedPlace.nombre === actividad.nombre ? cardColor : "white", color: highlightedPlace && highlightedPlace.nombre === actividad.nombre ? "white" : "black", transition: "background-color 0.3s ease" }}
                                     onMouseEnter={() => setHighlightedPlace(actividad)}
                                     onMouseLeave={() => setHighlightedPlace(null)}
                                     onClick={() => setHighlightedPlace(actividad)}
