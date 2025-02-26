@@ -7,9 +7,12 @@ import re
 import pickle
 from unidecode import unidecode
 from database import guardar_mensaje, obtener_historial, consultar_db
+import spacy
+from geopy.distance import geodesic
 
 from functools import lru_cache
 from cachetools import TTLCache
+from geopy.distance import geodesic
 
 
 # Cargar variables de entorno desde .env
@@ -99,7 +102,7 @@ def detectar_intencion(mensaje):
             categoria_detectada = categoria
             break  
 
-    # 🔍 Buscar ciudad con re.search() en lugar de in
+    # 🔍 Buscar ciudad con `re.search()` en lugar de `in`
     for ciudad in CIUDADES_OVERPASS:
         ciudad_normalizada = unidecode(ciudad.lower())
         if re.search(rf"\b{ciudad_normalizada}\b", mensaje):
@@ -107,6 +110,25 @@ def detectar_intencion(mensaje):
             break  
 
     return categoria_detectada, ciudad_detectada
+
+nlp = spacy.load("es_core_news_md")
+
+def detectar_intencion_con_embeddings(mensaje):
+    """Usa embeddings para mejorar la detección de intención."""
+    mensaje_doc = nlp(mensaje)
+
+    mejor_categoria = None
+    mejor_similitud = 0.5  # Solo consideramos similitudes mayores a 50%
+
+    for categoria, palabras in VERBOS_CLAVE.items():
+        for palabra in palabras:
+            palabra_doc = nlp(palabra)
+            similitud = mensaje_doc.similarity(palabra_doc)
+            if similitud > mejor_similitud:
+                mejor_categoria = categoria
+                mejor_similitud = similitud
+
+    return mejor_categoria
 
 
 overpass_cache = TTLCache(maxsize=50, ttl=3600)  # Cache de 50 consultas por 1 hora
@@ -157,6 +179,41 @@ def consultar_overpass(ciudad, categoria):
         print(f"Error en Overpass API: {e}")
         return ["Error en Overpass API, intenta de nuevo más tarde."]
 
+def filtrar_lugares_por_categoria(lugares, categoria):
+    """Filtra los lugares para asegurarse de que coincidan con la categoría buscada."""
+    categorias_validas = CATEGORIAS_LUGARES.get(categoria, [])
+    lugares_filtrados = [
+        lugar for lugar in lugares if any(tag in lugar.get("tipo", "").lower() for tag in categorias_validas)
+    ]
+
+    for lugar in lugares:
+        for categoria_validada in categorias_validas:
+            if categoria_validada in lugar.lower():
+                lugares_filtrados.append(lugar)
+                break  # Evita agregar duplicados
+
+    return lugares_filtrados if lugares_filtrados else ["No encontré lugares relevantes en la zona."]
+
+
+
+def ordenar_por_proximidad(lugares, ciudad):
+    """Ordena los lugares por cercanía al centro de la ciudad."""
+    coordenadas_ciudad = obtener_coordenadas(ciudad)
+    
+    if not coordenadas_ciudad or coordenadas_ciudad == (None, None):
+        return lugares  # Si no tenemos coordenadas, devolvemos la lista original
+
+    ciudad_lat, ciudad_lon = coordenadas_ciudad
+    
+    lugares_con_coordenadas = [
+        lugar for lugar in lugares if "lat" in lugar and "lon" in lugar
+    ]
+
+    lugares_ordenados = sorted(
+        lugares_con_coordenadas,
+        key=lambda lugar: geodesic((lugar["lat"], lugar["lon"]), (ciudad_lat, ciudad_lon)).km
+    )
+    return lugares_ordenados
 
 
 
@@ -254,10 +311,31 @@ def obtener_coordenadas(nombre_lugar):
 
         if data:
             return float(data[0]["lat"]), float(data[0]["lon"])
-        return None, None  # Si no se encuentran coordenadas
     except requests.RequestException as e:
         print(f"Error al obtener coordenadas: {e}")
-        return None, None
+
+    return None, None  # Si no se encuentran coordenadas
+
+
+def generar_respuesta_formateada(ciudad, categoria, lugares):
+    """Genera una respuesta más organizada y fácil de leer."""
+    if not lugares or "Error" in lugares[0]:
+        return f"No encontré lugares exactos para {categoria} en {ciudad}. Intenta preguntar de otra manera."
+
+    respuesta = f"🔹 **{categoria.capitalize()} en {ciudad}:**\n"
+    
+    for lugar in lugares[:5]:  # Limitamos a 5 resultados
+        if not isinstance(lugar, dict):  # Evita errores si el lugar no es un diccionario
+            continue
+        respuesta += f"- 🏨 **{lugar.get('nombre', 'Nombre desconocido')}**\n"
+        respuesta += f"  📍 Dirección: {lugar.get('direccion', 'No disponible')}\n"
+        if lugar.get("lat") and lugar.get("lon"):
+            respuesta += f"  🌍 Coordenadas: [{lugar['lat']}, {lugar['lon']}]\n"
+        if lugar.get("contacto") and "Sin sitio web" not in lugar["contacto"]:
+            respuesta += f"  🔗 Más info: {lugar['contacto']}\n"
+        respuesta += "\n"
+
+    return respuesta
 
 
 
@@ -287,11 +365,18 @@ def chatbot():
     """
     print(f"🟢 MENSAJE RECIBIDO: {mensaje_usuario}")  # 🔥 VERIFICACIÓN
 
-    # 🔍 DETECTAR INTENCIÓN Y CIUDAD
     categoria_detectada, ciudad_detectada = detectar_intencion(mensaje_usuario)
+    if not categoria_detectada:  # Si la detección inicial falla, usa embeddings
+        categoria_detectada = detectar_intencion_con_embeddings(mensaje_usuario)
+
+
         
     if ciudad_detectada and categoria_detectada:
         lugares = consultar_overpass(ciudad_detectada, categoria_detectada)
+        lugares_filtrados = filtrar_lugares_por_categoria(lugares, categoria_detectada)
+        lugares_ordenados = ordenar_por_proximidad(lugares, ciudad_detectada)
+        
+
 
         if lugares and len(lugares) > 0 and "Error" not in lugares[0]:
             coordenadas = []
@@ -304,15 +389,18 @@ def chatbot():
                         coordenadas.append({"nombre": lugar, "lat": lat, "lon": lon})
                 except:
                     continue
-
-            respuesta = f"En {ciudad_detectada}, puedes encontrar {categoria_detectada} en:\n- " + "\n- ".join(lugares[:5])
-            guardar_mensaje(user_id, mensaje_usuario, respuesta)
             
-            return jsonify({"respuesta": respuesta, "coordenadas": coordenadas})
+            #respuesta = f"En {ciudad_detectada}, puedes encontrar {categoria_detectada} en:\n- " + "\n- ".join(lugares[:5])
+            respuesta_formateada = generar_respuesta_formateada(ciudad_detectada, categoria_detectada, lugares_ordenados)
+
+            guardar_mensaje(user_id, mensaje_usuario, respuesta_formateada)
+            
+            return jsonify({"respuesta": respuesta_formateada, "coordenadas": coordenadas})
 
         return jsonify({"respuesta": f"No encontré lugares exactos para {categoria_detectada} en {ciudad_detectada}, intenta preguntarme de otra manera."})
 
     # Si no detectamos ciudad ni intención clara, usamos Hugging Face como fallback
+    
     respuesta = obtener_respuesta_huggingface(mensaje_usuario)
     respuesta_traducida = traducir_a_espanol(respuesta)
 
