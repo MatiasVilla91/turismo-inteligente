@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// 🔥 Colores por categoría
 const getCategoryColor = (category) => {
     const categoryColors = {
         cines: "red", museos: "blue", arte: "violet", parques: "green",
@@ -13,10 +14,12 @@ const getCategoryColor = (category) => {
     return categoryColors[category?.toLowerCase().trim()] || "blue";
 };
 
+// 🔥 Crear iconos personalizados
 const createCustomIcon = (category, isHighlighted) => {
     const validCategory = category && typeof category === "string" ? category.toLowerCase().trim() : "default";
     const color = getCategoryColor(validCategory);
     let iconUrl = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`;
+
     // Validar la URL del icono
     if (!color || !["blue", "gold", "red", "green", "orange", "yellow", "violet", "grey", "black"].includes(color)) {
         iconUrl = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png";
@@ -25,7 +28,6 @@ const createCustomIcon = (category, isHighlighted) => {
         iconUrl = "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png";
     }
     
-    console.log("Icono generado:", { category, color, iconUrl });
     return L.icon({
         iconUrl,
         iconSize: [30, 48],
@@ -34,15 +36,24 @@ const createCustomIcon = (category, isHighlighted) => {
     });
 };
 
-const ChangeView = ({ center }) => {
+// 🔥 Componente para actualizar la vista del mapa
+const ChangeView = ({ center, places }) => {
     const map = useMap();
+
     useEffect(() => {
-        map.setView([center.lat, center.lng], 14);
-    }, [center, map]);
+        if (places.length > 0) {
+            const bounds = L.latLngBounds(places.map(p => [p.lat, p.lng]));
+            map.fitBounds(bounds, { padding: [50, 50] }); // Ajusta el mapa para ver todos los marcadores
+        } else {
+            map.flyTo([center.lat, center.lng], 14, { duration: 1.5 }); // Movimiento suave si no hay lugares
+        }
+    }, [center, places, map]);
+
     return null;
 };
 
-const MapComponent = ({ center, category, highlightedPlace, setHighlightedPlace }) => {
+// 🔥 Componente principal del mapa
+const MapComponent = ({ center, category }) => {
     const [places, setPlaces] = useState([]);
 
     useEffect(() => {
@@ -51,15 +62,18 @@ const MapComponent = ({ center, category, highlightedPlace, setHighlightedPlace 
                 const response = await fetch(`http://127.0.0.1:5000/places?lat=${center.lat}&lng=${center.lng}&radius=1000`);
                 if (!response.ok) throw new Error(`Error ${response.status}`);
                 let data = await response.json();
+
                 if (!Array.isArray(data)) {
                     console.error("❌ Error: la API no devolvió un array", data);
                     setPlaces([]);
                     return;
                 }
+
                 data = data.map(place => ({ ...place, categoria: place.categoria || "default" }));
                 if (category !== "all") {
                     data = data.filter(place => place.categoria === category);
                 }
+
                 console.log("📍 Lugares procesados:", data);
                 setPlaces(data);
             } catch (err) {
@@ -67,35 +81,19 @@ const MapComponent = ({ center, category, highlightedPlace, setHighlightedPlace 
                 setPlaces([]);
             }
         };
+
         fetchPlaces();
     }, [center, category]);
 
     return (
         <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: "400px", width: "100%" }}>
-            <ChangeView center={center} />
+            <ChangeView center={center} places={places} />
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {places.map((place, index) => (
                 <Marker
                     key={`${place.lat}-${place.lng}-${index}`}
                     position={[place.lat, place.lng]}
-                    icon={createCustomIcon(place.categoria, highlightedPlace && highlightedPlace.nombre === place.name)}
-                    eventHandlers={{
-                        mouseover: (e) => {
-                            setHighlightedPlace && setHighlightedPlace(place);
-                            e.target.openPopup(); // Abre el popup al pasar el mouse
-                        },
-                        mouseout: (e) => {
-                            setHighlightedPlace && setHighlightedPlace(null);
-                            e.target.closePopup(); // Cierra el popup al quitar el mouse
-                        },
-                        click: (e) => {
-                            if (setHighlightedPlace) {
-                                setHighlightedPlace(place);
-                                document.getElementById(`card-${index}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-                                e.target.setBouncingOptions({ bounceHeight: 10, bounceSpeed: 60 }).bounce(3); // Agregar animación de rebote
-                            }
-                        }
-                    }}
+                    icon={createCustomIcon(place.categoria, false)}
                 >
                     <Popup>
                         <strong>{place.name}</strong>

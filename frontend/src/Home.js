@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from "react";
 import MapContainerWithFilter from "./MapContainerWithFilter";
 import Sidebar from "./Sidebar";
 import ItineraryModal from "./ItineraryModal";
 import Chatbot from "./Chatbot";
-
 
 function Home() {
     const [itinerario, setItinerario] = useState(null);
@@ -15,7 +13,7 @@ function Home() {
     const [intereses, setIntereses] = useState("");
     const [duracion, setDuracion] = useState("");
     const [categoria, setCategoria] = useState("all");
-    const [coordenadas, setCoordenadas] = useState(null);
+    const [coordenadas, setCoordenadas] = useState({ lat: -31.4201, lng: -64.1888 }); // 🌎 Valor por defecto (Córdoba)
     const [selectedPlaces, setSelectedPlaces] = useState([]);
     const [highlightedPlace, setHighlightedPlace] = useState(null);
 
@@ -34,7 +32,6 @@ function Home() {
         }
     }, []);
 
-
     const handleSearchDestinoAndSubmit = async (e) => {
         e.preventDefault();
         console.log("🚀 Botón presionado: Generando itinerario...", destino);
@@ -49,36 +46,23 @@ function Home() {
                 `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destino)}`
             );
             if (!responseDestino.ok) throw new Error("Error en la API de Nominatim.");
-            
-
 
             const dataDestino = await responseDestino.json();
             console.log("📍 Respuesta de Nominatim:", dataDestino);
-
-                
 
             if (dataDestino.length > 0) {
                 const { lat, lon } = dataDestino[0];
                 const newCoords = { lat: parseFloat(lat), lng: parseFloat(lon) };
                 setCoordenadas(newCoords);
-                
-
-
-                 
-
-                 
-
 
                 const responseItinerario = await fetch("http://127.0.0.1:5000/itinerarios", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    
                     body: JSON.stringify({
                         ciudad: newCoords,
                         intereses,
                         presupuesto,
                         duracion,
-                        //destino,
                         categoria
                     })
                 });
@@ -90,82 +74,62 @@ function Home() {
 
                 if (dataItinerario?.itinerario?.destinos && Array.isArray(dataItinerario.itinerario.destinos)) {
                     setItinerario(dataItinerario.itinerario);
-               // console.log("📌 Lugares seleccionados antes de setear:", selectedPlaces);
-                                    
-                
-                                    const filteredPlaces = dataItinerario.itinerario.destinos.filter(place => 
+
+                    // 🔥 Filtrar los lugares por categoría
+                    const filteredPlaces = dataItinerario.itinerario.destinos.filter(place => 
                         categoria === "all" || (place.categoria && place.categoria === categoria)
                     );
-                    setItinerario(dataItinerario.itinerario);
-    
-                    // 🔥 Forzar la actualización del estado
                     setSelectedPlaces([...filteredPlaces]);
-                    
                 } else {
                     console.error("❌ Error: `dataItinerario.itinerario.destinos` no está definido o no es un array.", dataItinerario);
                     setError("No se pudo generar el itinerario. Intenta con otros parámetros.");
                 }
-                
             } else {
                 setError("No se encontraron coordenadas para el destino ingresado.");
             }
-            } catch (error) {
+        } catch (error) {
             setError("Ocurrió un error: " + error.message);
-            }
+        }
     };
 
     return (
-
-        
-
-            
-
-        <div className="d-flex" style={{ height: "100vh" }}>
-            <div style={{ flex: 1, position: "relative" }}>
-            
-            <MapContainerWithFilter 
-                key={coordenadas ? `${coordenadas.lat}-${coordenadas.lng}` : "default"} // Evita re-render innecesario
-                initialCenter={coordenadas || { lat: -31.4201, lng: -64.1888 }} 
-                categoria={categoria} 
-                selectedPlaces={selectedPlaces}
-                highlightedPlace={highlightedPlace}
-                setHighlightedPlace={setHighlightedPlace} 
-            />
+        <div className="d-flex" style={{ height: "100vh", display: "flex" }}>
+            {/* Contenedor del mapa - Ocupará el 70% del ancho */}
+            <div style={{ flex: 7, position: "relative" }}>
+                <MapContainerWithFilter 
+                    key={coordenadas && coordenadas.lat !== undefined ? `${coordenadas.lat}-${coordenadas.lng}` : "default"} 
+                    coordenadas={coordenadas || { lat: -31.4201, lng: -64.1888 }} 
+                    categoria={categoria} 
+                    selectedPlaces={selectedPlaces}
+                    highlightedPlace={highlightedPlace}
+                    setHighlightedPlace={setHighlightedPlace} 
+                />
+            </div>
+    
+            {/* Contenedor de la barra lateral y chatbot - Ocupará el 30% del ancho */}
+            <div style={{ flex: 3, display: "flex", flexDirection: "column", minWidth: "300px" }}>
+                <Sidebar 
+                    setShowModal={setShowModal}
+                    setCategoria={setCategoria}
+                    categoria={categoria}
+                    error={error}
+                    itinerario={itinerario} 
+                    setHighlightedPlace={setHighlightedPlace}
+                    highlightedPlace={highlightedPlace}
+                    setCoordenadas={setCoordenadas}
+                />
+    
+                {/* Contenedor del chatbot */}
+                <div style={{ padding: "10px", backgroundColor: "#f8f9fa", borderTop: "1px solid #ccc" }}>
+                    <Chatbot setCoordenadas={(newCoords) => {
+                        console.log("📡 El chatbot detectó esta ciudad:", newCoords);
+                        setCoordenadas(newCoords);  
+                    }} />
+                </div>
+            </div>
         </div>
-        
-            <Sidebar setShowModal={setShowModal}
-            setCategoria={setCategoria}
-            categoria={categoria}
-            error={error}
-            itinerario={itinerario} 
-            setHighlightedPlace={setHighlightedPlace }
-            highlightedPlace={highlightedPlace}
-            coordenadas={setCoordenadas}/>
-            
-            
-        
-        
-                <ItineraryModal 
-                showModal={showModal} 
-                setShowModal={setShowModal} 
-                handleSearchDestinoAndSubmit={handleSearchDestinoAndSubmit} 
-                destino={destino} setDestino={setDestino} 
-                intereses={intereses} setIntereses={setIntereses} 
-                presupuesto={presupuesto} setPresupuesto={setPresupuesto} 
-                duracion={duracion} setDuracion={setDuracion} 
-
-            />  
-
-          
-
-                   </div>
-        
-
-
-        
-        
-        
     );
+    
 }
 
 export default Home;

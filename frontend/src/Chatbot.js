@@ -6,21 +6,19 @@ const Chatbot = ({ setCoordenadas }) => {
     const [input, setInput] = useState("");
     const [userId, setUserId] = useState("");
     const [loading, setLoading] = useState(false);
-    const messagesEndRef = useRef(null); // Para hacer scroll automático
+    const messagesEndRef = useRef(null);
 
-    // Obtener user_id de localStorage al cargar el componente
     useEffect(() => {
         let storedUserId = localStorage.getItem("user_id");
 
         if (!storedUserId) {
-            storedUserId = "user_" + Math.random().toString(36).substring(7); // Generar un ID aleatorio
+            storedUserId = "user_" + Math.random().toString(36).substring(7);
             localStorage.setItem("user_id", storedUserId);
         }
 
         setUserId(storedUserId);
     }, []);
 
-    // Función para hacer scroll automático al final del chat
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
@@ -29,31 +27,35 @@ const Chatbot = ({ setCoordenadas }) => {
         if (!input.trim()) return;
 
         const userMessage = { sender: "user", text: input };
-        setMessages((prev) => [...prev, userMessage]);
-        setInput(""); // Limpiar input inmediatamente
-        setLoading(true); // Mostrar indicador de carga
+        setMessages(prevMessages => [...prevMessages.slice(-20), userMessage]); // Limitar historial
+
+        setLoading(true);
+        setInput(""); // Limpiar input antes de la respuesta
 
         try {
             const response = await axios.post("http://localhost:5000/chatbot", { 
                 user_id: userId, 
                 mensaje: input 
             });
+            console.log("📡 Respuesta del backend:", response.data); // 🔍 DEBUG
 
-            const botMessage = { sender: "bot", text: response.data.respuesta };
-            setMessages((prev) => [...prev, botMessage]);
+            const botMessage = { sender: "bot", text: response.data.respuesta || "No entendí la consulta." };
+            setMessages(prevMessages => [...prevMessages.slice(-20), botMessage]);
 
-            // 🚀 Si el chatbot devuelve coordenadas, las pasamos al mapa
-            if (response.data.coordenadas.length > 0) {
-                const newCenter = response.data.coordenadas[0];
-                setCoordenadas(newCenter);
+            if (Array.isArray(response.data.coordenadas) && response.data.coordenadas.length > 0) {
+                const { lat, lon } = response.data.coordenadas[0];
+                console.log("📡 Respuesta del backend:", response.data);
+                setCoordenadas({ lat, lng: lon });
+            } else {
+                console.warn("⚠ No se recibieron coordenadas en la respuesta del chatbot.");
             }
 
         } catch (error) {
             console.error("❌ Error al enviar mensaje:", error);
-            setMessages((prev) => [...prev, { sender: "bot", text: "⚠️ Error en el servidor. Inténtalo de nuevo." }]);
+            setMessages(prevMessages => [...prevMessages, { sender: "bot", text: "😓 Lo siento, hubo un error." }]);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false); // Ocultar indicador de carga
     };
 
     return (
@@ -65,7 +67,7 @@ const Chatbot = ({ setCoordenadas }) => {
                     </div>
                 ))}
                 {loading && <div className="message bot">⏳ Pensando...</div>}
-                <div ref={messagesEndRef} /> {/* Punto de scroll automático */}
+                <div ref={messagesEndRef} />
             </div>
 
             <div className="chatbot-input">
@@ -75,8 +77,9 @@ const Chatbot = ({ setCoordenadas }) => {
                     onChange={(e) => setInput(e.target.value)} 
                     placeholder="Escribe un mensaje..."
                     onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    aria-label="Escribir mensaje"
                 />
-                <button onClick={sendMessage} disabled={loading}>Enviar</button>
+                <button onClick={sendMessage} disabled={!input.trim() || loading}>Enviar</button>
             </div>
         </div>
     );

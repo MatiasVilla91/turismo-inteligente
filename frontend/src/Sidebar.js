@@ -1,7 +1,7 @@
 import React from "react";
 import { Card, Button, Form } from "react-bootstrap";
 import { FaFilter } from "react-icons/fa";
-import Chatbot from "./Chatbot";
+
 
 
 const getCategoryColor = (category) => {
@@ -46,11 +46,7 @@ const Sidebar = ({ setShowModal, setCategoria, categoria, error, itinerario, set
                     <option value="playas">Playas</option>
                 </Form.Select>
             </Form.Group>
-            {/* ✅ Pasamos `setCoordenadasChatbot` a Chatbot */}
-            <Chatbot setCoordenadas={(newCoords) => {
-    console.log("📡 El chatbot detectó esta ciudad:", newCoords);
-    setCoordenadas(newCoords);  // 🔹 Se envía la ciudad correctamente
-}} />
+            
 
                 
                

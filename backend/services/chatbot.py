@@ -144,8 +144,12 @@ def consultar_overpass(ciudad, categoria):
             direccion = tags.get("addr:street", "Dirección no disponible")
             tipo = tags.get("amenity", tags.get("tourism", "Categoría desconocida")).replace("_", " ").capitalize()
             contacto = tags.get("contact:website", tags.get("website", "Sin sitio web"))
+            
+            lat = elem.get("lat", None)
+            lon = elem.get("lon", None)
 
-            if nombre:
+            if nombre and lat and lon:
+                print(f"📍 Lugar encontrado: {nombre} ({tipo}) - Coordenadas: {lat}, {lon}")  # 🔥 Imprimir coordenadas
                 lugares.append(f"{nombre} ({tipo}) - {direccion} - Más info: {contacto}")
 
         if lugares:
@@ -175,7 +179,7 @@ def limpiar_respuesta_hf(mensaje, respuesta_hf):
     for frase in frases_a_eliminar:
         respuesta_hf = respuesta_hf.replace(frase, "").strip()
 
-    return re.sub(r"\s+", " ", respuesta_hf)[:275]  # Limita la longitud máxima
+    return re.sub(r"\s+", " ", respuesta_hf) # Limita la longitud máxima[:275] 
 
 
 
@@ -226,14 +230,19 @@ Chatbot:
 
 
 def traducir_a_espanol(texto):
-    """Traduce el texto al español y resume si es demasiado largo."""
+    """Traduce el texto al español asegurando que no se trunque."""
     try:
-        traducido = GoogleTranslator(source='auto', target='es').translate(texto)
+        if len(texto) > 500:  # Si el texto es muy largo, dividir en fragmentos
+            partes = [texto[i:i+500] for i in range(0, len(texto), 500)]
+            traducido = " ".join([GoogleTranslator(source='auto', target='es').translate(p) for p in partes])
+        else:
+            traducido = GoogleTranslator(source='auto', target='es').translate(texto)
         
         return traducido
     except Exception as e:
         print(f"Error al traducir: {e}")
         return texto
+
 
 def obtener_historial(user_id, limite=5):
     """Obtiene los últimos 5 mensajes del usuario para contexto en la conversación."""
@@ -253,11 +262,16 @@ def obtener_coordenadas(nombre_lugar):
         data = response.json()
 
         if data:
-            return float(data[0]["lat"]), float(data[0]["lon"])
+            lat, lon = float(data[0]["lat"]), float(data[0]["lon"])
+            print(f"📌 Coordenadas obtenidas para '{nombre_lugar}': {lat}, {lon}")  # 🔥 Imprimir en consola
+            return lat, lon
+
+        print(f"⚠ No se encontraron coordenadas para: {nombre_lugar}")
         return None, None  # Si no se encuentran coordenadas
     except requests.RequestException as e:
-        print(f"Error al obtener coordenadas: {e}")
+        print(f"❌ Error al obtener coordenadas de '{nombre_lugar}': {e}")
         return None, None
+
 
 
 

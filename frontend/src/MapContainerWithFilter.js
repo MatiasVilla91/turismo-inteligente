@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from "react";
 import MapComponent from "./MapComponent";
 
-const MapContainerWithFilter = ({ initialCenter, categoria, setCategoria, selectedPlaces }) => {
-    const [mapCenter, setMapCenter] = useState(initialCenter);
+const MapContainerWithFilter = ({ coordenadas, categoria, setCategoria, selectedPlaces }) => {
+    // 🛠️ Asegurar que siempre haya coordenadas por defecto
+    const defaultCoords = { lat: -31.4201, lng: -64.1888 };
+    const [mapCenter, setMapCenter] = useState(coordenadas || defaultCoords);
 
     useEffect(() => {
-        if (initialCenter) {
-            console.log("📍 Cambiando centro del mapa a:", initialCenter);
-            setMapCenter(initialCenter); // ✅ Se actualiza el centro cuando cambia initialCenter
+        if (coordenadas && coordenadas.lat !== undefined && coordenadas.lng !== undefined) {
+            console.log("📍 Actualizando centro del mapa a:", coordenadas);
+            setMapCenter(coordenadas);
+        } else {
+            console.warn("⚠ `coordenadas` es undefined, usando valor por defecto:", defaultCoords);
+            setMapCenter(defaultCoords);
         }
-    }, [initialCenter]); // 🔹 Detecta cambios en initialCenter y actualiza el estado
+    }, [coordenadas]);
 
     const handleCategoryChange = (event) => {
         const nuevaCategoria = event.target.value;
