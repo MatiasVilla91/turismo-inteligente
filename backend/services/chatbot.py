@@ -299,7 +299,8 @@ def chatbot():
             # Obtener coordenadas de los primeros lugares
             for lugar in lugares[:5]:  # Limitamos a 5 resultados
                 try:
-                    lat, lon = obtener_coordenadas(lugar.split("(")[0].strip())  # Extraer solo el nombre
+                    nombre = lugar.split("(")[0].strip()
+                    lat, lon = obtener_coordenadas(nombre)  # Extraer solo el nombre
                     if lat and lon:
                         coordenadas.append({"nombre": lugar, "lat": lat, "lon": lon})
                 except:
