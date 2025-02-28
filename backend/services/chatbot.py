@@ -75,6 +75,7 @@ def obtener_ciudades_overpass():
         print("Error al obtener ciudades:", e)
         return set()
 
+
 # Cargar ciudades desde Overpass con manejo de errores
 try:
     CIUDADES_OVERPASS = obtener_ciudades_overpass()
@@ -104,6 +105,8 @@ def detectar_intencion(mensaje):
         ciudad_normalizada = unidecode(ciudad.lower())
         if re.search(rf"\b{ciudad_normalizada}\b", mensaje):
             ciudad_detectada = ciudad.capitalize()
+            print(f"🔍 Ciudad detectada correctamente: {ciudad_detectada}")  # 🔥 DEBUG
+
             break  
 
     return categoria_detectada, ciudad_detectada
@@ -191,11 +194,17 @@ def obtener_respuesta_huggingface(mensaje):
         return "Por favor, dime más detalles para poder ayudarte."
 
     prompt = f"""
-Responde como un asistente de viajes inteligente. Sé claro, directo y conversacional. No uses frases genéricas ni demasiado formales.
+Eres un asistente de viajes experto en recomendar destinos, actividades y opciones según el interés del usuario. Responde de forma clara, directa y conversacional, adaptándote al contexto y necesidades del viajero.
+
+- Evita respuestas genéricas o demasiado formales.
+- Proporciona detalles útiles como nombres de lugares, horarios aproximados y precios estimados si aplica.
+- Si el usuario menciona una ciudad, sugiere actividades relevantes basadas en la categoría detectada.
+- Si la consulta es ambigua, pide más información de manera natural.
 
 Usuario: {mensaje}
 Chatbot:
 """
+
 
     data = {
         "inputs": prompt,
@@ -253,26 +262,81 @@ def obtener_historial(user_id, limite=5):
         print(f"Error obteniendo historial: {e}")
         return []
     
-def obtener_coordenadas(nombre_lugar):
-    """Obtiene coordenadas reales usando OpenStreetMap (Nominatim API)."""
+import requests
+import requests
+from geopy.distance import geodesic
+
+def obtener_coordenadas(nombre_lugar, ciudad_referencia=None, umbral_km=50):
+    """
+    Obtiene coordenadas de un lugar con Nominatim, priorizando lugares dentro del país correcto.
+    Si `ciudad_referencia` se proporciona, filtra lugares demasiado lejanos.
+    """
     try:
-        url = f"https://nominatim.openstreetmap.org/search?q={nombre_lugar}&format=json&limit=1"
-        response = requests.get(url, headers={"User-Agent": "turismo-inteligente"})
+        url = f"https://nominatim.openstreetmap.org/search?q={nombre_lugar}&format=json&limit=5"
+        headers = {"User-Agent": "turismo-inteligente"}
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
 
-        if data:
-            lat, lon = float(data[0]["lat"]), float(data[0]["lon"])
-            print(f"📌 Coordenadas obtenidas para '{nombre_lugar}': {lat}, {lon}")  # 🔥 Imprimir en consola
-            return lat, lon
+        if not data:
+            print(f"⚠ No se encontraron coordenadas para: {nombre_lugar}")
+            return None, None
+        
+        # 🔍 Filtramos lugares que sean realmente ciudades o puntos de interés
+        lugares_validos = [l for l in data if l.get("type") in ["city", "town", "village", "municipality", "hotel", "tourism", "attraction"]]
 
-        print(f"⚠ No se encontraron coordenadas para: {nombre_lugar}")
-        return None, None  # Si no se encuentran coordenadas
+        if not lugares_validos:
+            print(f"⚠ No se encontró una ciudad clara para: {nombre_lugar}, usando primer resultado disponible.")
+            mejor_opcion = data[0]  # Última opción si no hay ciudades claras
+        else:
+            # 🔥 Elegir la ciudad con mayor importancia (prioriza lugares reconocidos)
+            mejor_opcion = max(lugares_validos, key=lambda l: l.get("importance", 0))
+        
+        if "nombre desconocido" in mejor_opcion.get("name", "").lower():
+            mejor_opcion["name"] = mejor_opcion.get("display_name", "Ubicación sin nombre")
+
+
+        lat, lon = float(mejor_opcion["lat"]), float(mejor_opcion["lon"])
+        pais_detectado = mejor_opcion.get("display_name", "").split(",")[-1].strip()
+
+        # 🛑 FILTRAR LUGARES ERRÓNEOS POR DISTANCIA
+        if ciudad_referencia:
+            ref_lat, ref_lon = ciudad_referencia
+            distancia = geodesic((ref_lat, ref_lon), (lat, lon)).km
+            if distancia > umbral_km:
+                print(f"❌ DESCARTADO: {nombre_lugar} ({lat}, {lon}) por estar a {distancia:.2f} km de la ciudad base.")
+                return None, None
+
+        print(f"📌 Ciudad final: {nombre_lugar} | País detectado: {pais_detectado} | Coordenadas finales: {lat}, {lon}")
+        return lat, lon
+
     except requests.RequestException as e:
         print(f"❌ Error al obtener coordenadas de '{nombre_lugar}': {e}")
         return None, None
 
 
+
+
+from geopy.distance import geodesic
+
+def filtrar_lugares_invalidos(ciudad_lat, ciudad_lon, lugares, umbral_km=50):
+    """
+    Filtra lugares que están a más de `umbral_km` km de la ciudad detectada.
+    Esto previene errores como Madrid con lugares en Panamá.
+    """
+    lugares_validos = []
+    for lugar in lugares:
+        lugar_lat = float(lugar.get("lat", 0))
+        lugar_lon = float(lugar.get("lon", 0))
+        distancia = geodesic((ciudad_lat, ciudad_lon), (lugar_lat, lugar_lon)).km
+
+        if distancia <= umbral_km:
+            lugares_validos.append(lugar)
+        else:
+            print(f"❌ DESCARTADO: {lugar.get('name', 'Lugar desconocido')} ({lugar_lat}, {lugar_lon}) "
+                  f"por estar a {distancia:.2f} km de {ciudad_lat}, {ciudad_lon}")
+
+    return lugares_validos
 
 
 
@@ -303,6 +367,7 @@ def chatbot():
 
     # 🔍 DETECTAR INTENCIÓN Y CIUDAD
     categoria_detectada, ciudad_detectada = detectar_intencion(mensaje_usuario)
+    lat_ciudad, lon_ciudad = obtener_coordenadas(ciudad_detectada)
         
     if ciudad_detectada and categoria_detectada:
         lugares = consultar_overpass(ciudad_detectada, categoria_detectada)
@@ -314,7 +379,7 @@ def chatbot():
             for lugar in lugares[:5]:  # Limitamos a 5 resultados
                 try:
                     nombre = lugar.split("(")[0].strip()
-                    lat, lon = obtener_coordenadas(nombre)  # Extraer solo el nombre
+                    lat, lon = obtener_coordenadas(nombre,ciudad_referencia=(lat_ciudad, lon_ciudad))  # Extraer solo el nombre
                     if lat and lon:
                         coordenadas.append({"nombre": lugar, "lat": lat, "lon": lon})
                 except:

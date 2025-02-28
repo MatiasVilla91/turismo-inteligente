@@ -38,16 +38,25 @@ const createCustomIcon = (category, isHighlighted) => {
 
 // 🔥 Componente para actualizar la vista del mapa
 const ChangeView = ({ center, places }) => {
+    console.log("🔄 Nuevo centro del mapa:", center); 
     const map = useMap();
 
     useEffect(() => {
-        if (places.length > 0) {
-            const bounds = L.latLngBounds(places.map(p => [p.lat, p.lng]));
-            map.fitBounds(bounds, { padding: [50, 50] }); // Ajusta el mapa para ver todos los marcadores
+        console.log("📍 Recibido para mover mapa:", center); // Debug para ver qué coordenadas llegan
+    
+        if (center && typeof center.lat === "number" && typeof center.lng === "number") {
+            if (places.length > 0) {
+                const bounds = L.latLngBounds(places.map(p => [p.lat, p.lng]));
+                map.fitBounds(bounds, { padding: [50, 50] }); // Ajusta el mapa para ver todos los marcadores
+            } else {
+                console.log("📍 Moviendo mapa a:", center.lat, center.lng);
+                map.setView([center.lat, center.lng], 14, { animate: true }); // Cambiar flyTo por setView
+            }
         } else {
-            map.flyTo([center.lat, center.lng], 14, { duration: 1.5 }); // Movimiento suave si no hay lugares
+            console.error("⚠ Error: Coordenadas inválidas en center:", center);
         }
     }, [center, places, map]);
+    
 
     return null;
 };
@@ -86,7 +95,7 @@ const MapComponent = ({ center, category }) => {
     }, [center, category]);
 
     return (
-        <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: "400px", width: "100%" }}>
+        <MapContainer center={center?.lat && center?.lng ? [center.lat, center.lng] : [0, 0]} zoom={14} style={{ height: "400px", width: "100%" }}>
             <ChangeView center={center} places={places} />
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             {places.map((place, index) => (

@@ -41,14 +41,19 @@ const Chatbot = ({ setCoordenadas }) => {
 
             const botMessage = { sender: "bot", text: response.data.respuesta || "No entendí la consulta." };
             setMessages(prevMessages => [...prevMessages.slice(-20), botMessage]);
-
             if (Array.isArray(response.data.coordenadas) && response.data.coordenadas.length > 0) {
-                const { lat, lon } = response.data.coordenadas[0];
-                console.log("📡 Respuesta del backend:", response.data);
-                setCoordenadas({ lat, lng: lon });
+                const { lat, lon } = response.data.coordenadas[0]; 
+            
+                if (!isNaN(lat) && !isNaN(lon)) {  // Asegurar que las coordenadas son números válidos
+                    console.log("📡 Coordenadas recibidas del backend:", lat, lon);
+                    setCoordenadas({ lat: lat, lng: lon }); // Asegurar que "lng" es el valor correcto
+                } else {
+                    console.error("❌ Error: Coordenadas no son válidas:", response.data.coordenadas[0]);
+                }
             } else {
                 console.warn("⚠ No se recibieron coordenadas en la respuesta del chatbot.");
             }
+            
 
         } catch (error) {
             console.error("❌ Error al enviar mensaje:", error);
