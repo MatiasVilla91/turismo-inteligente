@@ -41,6 +41,7 @@ const Chatbot = ({ setCoordenadas }) => {
 
             const botMessage = { sender: "bot", text: response.data.respuesta || "No entendí la consulta." };
             setMessages(prevMessages => [...prevMessages.slice(-20), botMessage]);
+            
             if (Array.isArray(response.data.coordenadas) && response.data.coordenadas.length > 0) {
                 const { lat, lon } = response.data.coordenadas[0]; 
             
@@ -53,7 +54,6 @@ const Chatbot = ({ setCoordenadas }) => {
             } else {
                 console.warn("⚠ No se recibieron coordenadas en la respuesta del chatbot.");
             }
-            
 
         } catch (error) {
             console.error("❌ Error al enviar mensaje:", error);
@@ -63,12 +63,29 @@ const Chatbot = ({ setCoordenadas }) => {
         }
     };
 
+    // 📌 Función para formatear los mensajes del bot con HTML (negritas, links, etc.)
+    const formatMessage = (text) => {
+        const lugares = text.split("\n").map((lugar, index) => {
+            const linkMatch = lugar.match(/(https?:\/\/[^\s]+)/);
+            const link = linkMatch ? linkMatch[0] : null;
+            const textoSinLink = link ? lugar.replace(link, "").trim() : lugar.trim();
+
+            return `<div class="message-content">
+                ${textoSinLink}
+                ${link ? `<a href="${link}" target="_blank" rel="noopener noreferrer">🔗 Ver más</a>` : ""}
+            </div>`;
+        });
+
+        return lugares.join("");
+    };
+
     return (
         <div className="chatbot-container">
             <div className="chatbot-messages">
                 {messages.map((msg, index) => (
-                    <div key={index} className={`message ${msg.sender}`}>
-                        {msg.text}
+                    <div key={index} 
+                        className={`message ${msg.sender}`} 
+                        dangerouslySetInnerHTML={msg.sender === "bot" ? { __html: formatMessage(msg.text) } : { __html: msg.text }}>
                     </div>
                 ))}
                 {loading && <div className="message bot">⏳ Pensando...</div>}
@@ -82,6 +99,7 @@ const Chatbot = ({ setCoordenadas }) => {
                     onChange={(e) => setInput(e.target.value)} 
                     placeholder="Escribe un mensaje..."
                     onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    autoFocus
                     aria-label="Escribir mensaje"
                 />
                 <button onClick={sendMessage} disabled={!input.trim() || loading}>Enviar</button>
