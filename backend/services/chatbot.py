@@ -141,7 +141,7 @@ def consultar_overpass(ciudad, categoria):
         data = response.json()
 
         lugares = []
-        for elem in data.get("elements", [])[:10]:  # Limitar a 10 resultados
+        for elem in data.get("elements", [])[:50]:  # Limitar a 10 resultados
             tags = elem.get("tags", {})
             nombre = tags.get("name", "Nombre desconocido")
             direccion = tags.get("addr:street", "Dirección no disponible")
@@ -150,10 +150,14 @@ def consultar_overpass(ciudad, categoria):
             
             lat = elem.get("lat", None)
             lon = elem.get("lon", None)
+            
+            # 🚫 FILTRAR LUGARES INÚTILES
+            if not nombre or nombre.lower() in ["nombre desconocido", "information", "artwork"]:
+                continue  # Omitir lugares sin nombre útil
 
             if nombre and lat and lon:
                 print(f"📍 Lugar encontrado: {nombre} ({tipo}) - Coordenadas: {lat}, {lon}")  # 🔥 Imprimir coordenadas
-                lugares.append(f"{nombre} ({tipo}) - {direccion} - Más info: {contacto}")
+                lugares.append(f"{nombre} ({tipo}) - {direccion} - Más info: {contacto}-{lat} {lon}")
 
         if lugares:
             overpass_cache[cache_key] = lugares  # Guardar en caché solo si hay resultados
@@ -195,11 +199,16 @@ def obtener_respuesta_huggingface(mensaje):
 
     prompt = f"""
 Eres un asistente de viajes experto en recomendar destinos, actividades y opciones según el interés del usuario. Responde de forma clara, directa y conversacional, adaptándote al contexto y necesidades del viajero.
+Responde de forma clara, conversacional y amigable, adaptándote a lo que busca el viajero.
 
 - Evita respuestas genéricas o demasiado formales.
 - Proporciona detalles útiles como nombres de lugares, horarios aproximados y precios estimados si aplica.
 - Si el usuario menciona una ciudad, sugiere actividades relevantes basadas en la categoría detectada.
 - Si la consulta es ambigua, pide más información de manera natural.
+- Si mencionan hoteles, describe cada uno en una frase breve y atractiva.
+- Si se trata de monumentos, museos o lugares turísticos, destaca qué hace especial a cada uno.
+- Usa emojis cuando sea apropiado para hacer la respuesta más visualmente atractiva.
+
 
 Usuario: {mensaje}
 Chatbot:
@@ -211,7 +220,7 @@ Chatbot:
         "parameters": {
             "max_new_tokens": 500,
             "return_full_text": False,
-            "temperature": 0.7,
+            "temperature": 0.8,
             "top_p": 0.9,
             "repetition_penalty": 1.2
         }
@@ -266,6 +275,9 @@ import requests
 import requests
 from geopy.distance import geodesic
 
+import requests
+from geopy.distance import geodesic
+
 def obtener_coordenadas(nombre_lugar, ciudad_referencia=None, umbral_km=50):
     """
     Obtiene coordenadas de un lugar con Nominatim, priorizando lugares dentro del país correcto.
@@ -295,7 +307,6 @@ def obtener_coordenadas(nombre_lugar, ciudad_referencia=None, umbral_km=50):
         if "nombre desconocido" in mejor_opcion.get("name", "").lower():
             mejor_opcion["name"] = mejor_opcion.get("display_name", "Ubicación sin nombre")
 
-
         lat, lon = float(mejor_opcion["lat"]), float(mejor_opcion["lon"])
         pais_detectado = mejor_opcion.get("display_name", "").split(",")[-1].strip()
 
@@ -313,6 +324,7 @@ def obtener_coordenadas(nombre_lugar, ciudad_referencia=None, umbral_km=50):
     except requests.RequestException as e:
         print(f"❌ Error al obtener coordenadas de '{nombre_lugar}': {e}")
         return None, None
+
 
 
 
