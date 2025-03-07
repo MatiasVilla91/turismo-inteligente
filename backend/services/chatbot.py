@@ -115,16 +115,36 @@ def detectar_intencion(mensaje):
 overpass_cache = TTLCache(maxsize=50, ttl=3600)  # Cache de 50 consultas por 1 hora
 
 
+import requests
+from cachetools import TTLCache
+from unidecode import unidecode
+
+# Cache para evitar consultas repetidas en poco tiempo
+overpass_cache = TTLCache(maxsize=100, ttl=3600)  # Cachea hasta 100 consultas por 1 hora
+
 def consultar_overpass(ciudad, categoria):
     """Consulta Overpass API para obtener lugares de una categoría en una ciudad."""
     
-    cache_key = f"{ciudad}_{categoria}"
+    # 🔥 Clave de cache para evitar repetición de consultas
+    cache_key = f"{unidecode(ciudad.lower())}_{categoria}"
     if cache_key in overpass_cache:
+        print(f"🛑 Usando datos en caché para {ciudad} - {categoria}")
         return overpass_cache[cache_key]
 
-    overpass_url = "http://overpass-api.de/api/interpreter"
-    tipos = CATEGORIAS_LUGARES.get(categoria, ["tourism"])
-    consulta_tipos = "\n".join(f'node["{tipo}"](area.searchArea);' for tipo in tipos)
+    # 🔍 Selección de etiquetas según la categoría solicitada
+    if categoria == "hospedarse":
+        tipos = ['tourism=hotel', 'tourism=hostel', 'tourism=motel', 'amenity=hotel']
+    elif categoria == "comer":
+        tipos = ['amenity=restaurant', 'amenity=cafe', 'amenity=fast_food', 'amenity=food_court']
+    elif categoria == "compras":
+        tipos = ['shop=mall', 'shop=supermarket', 'shop=department_store']
+    elif categoria == "turismo":
+        tipos = ['tourism=museum', 'tourism=monument', 'tourism=zoo', 'tourism=theme_park']
+    else:
+        tipos = ["tourism", "amenity"]
+
+    # 🔹 Generar consulta Overpass con los filtros adecuados
+    consulta_tipos = "\n".join(f'node["{t.split("=")[0]}"="{t.split("=")[1]}"](area.searchArea);' for t in tipos)
 
     query = f"""
     [out:json];
@@ -135,38 +155,46 @@ def consultar_overpass(ciudad, categoria):
     out center;
     """
 
-    try:
-        response = requests.get(overpass_url, params={"data": query}, timeout=30)
-        response.raise_for_status()
-        data = response.json()
+    # 🔥 Endpoint alternativo en caso de bloqueo
+    overpass_urls = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter"
+    ]
 
-        lugares = []
-        for elem in data.get("elements", [])[:50]:  # Limitar a 10 resultados
-            tags = elem.get("tags", {})
-            nombre = tags.get("name", "Nombre desconocido")
-            direccion = tags.get("addr:street", "Dirección no disponible")
-            tipo = tags.get("amenity", tags.get("tourism", "Categoría desconocida")).replace("_", " ").capitalize()
-            contacto = tags.get("contact:website", tags.get("website", "Sin sitio web"))
-            
-            lat = elem.get("lat", None)
-            lon = elem.get("lon", None)
-            
-            # 🚫 FILTRAR LUGARES INÚTILES
-            if not nombre or nombre.lower() in ["nombre desconocido", "information", "artwork"]:
-                continue  # Omitir lugares sin nombre útil
+    for overpass_url in overpass_urls:
+        try:
+            print(f"📡 Consultando Overpass: {overpass_url} para {ciudad} ({categoria})")
+            response = requests.get(overpass_url, params={"data": query}, timeout=30)
+            response.raise_for_status()
+            data = response.json()
 
-            if nombre and lat and lon:
-                print(f"📍 Lugar encontrado: {nombre} ({tipo}) - Coordenadas: {lat}, {lon}")  # 🔥 Imprimir coordenadas
-                lugares.append(f"{nombre} ({tipo}) - {direccion} - Más info: {contacto}-{lat} {lon}")
+            # 📌 Procesar lugares encontrados
+            lugares = []
+            for elem in data.get("elements", [])[:20]:  # Limitar a 20 resultados
+                tags = elem.get("tags", {})
+                nombre = tags.get("name", "").strip()
+                direccion = tags.get("addr:street", "Dirección no disponible").strip()
+                tipo = tags.get("tourism", tags.get("amenity", "Categoría desconocida")).replace("_", " ").capitalize()
+                contacto = tags.get("contact:website", tags.get("website", "Sin sitio web")).strip()
 
-        if lugares:
-            overpass_cache[cache_key] = lugares  # Guardar en caché solo si hay resultados
+                lat, lon = elem.get("lat"), elem.get("lon")
 
-        return lugares if lugares else ["No encontré lugares relevantes en la zona."]
-    
-    except requests.RequestException as e:
-        print(f"Error en Overpass API: {e}")
-        return ["Error en Overpass API, intenta de nuevo más tarde."]
+                # 🚫 FILTRO de lugares inútiles
+                if not nombre or nombre.lower() in ["nombre desconocido", "information", "artwork", "point"]:
+                    continue  # Omitir lugares irrelevantes
+
+                if lat and lon:
+                    lugares.append(f"{nombre} ({tipo}) - {direccion} - Más info: {contacto}-{lat} {lon}")
+
+            if lugares:
+                overpass_cache[cache_key] = lugares  # Guardar en caché si hay resultados
+                return lugares
+
+        except requests.RequestException as e:
+            print(f"⚠ Error en Overpass ({overpass_url}): {e}")
+
+    return ["⚠ No encontré lugares relevantes en la zona o Overpass está caído."]
+
 
 
 
@@ -175,8 +203,11 @@ def consultar_overpass(ciudad, categoria):
 def limpiar_respuesta_hf(mensaje, respuesta_hf):
     """Elimina frases genéricas y hace que la respuesta suene más natural."""
     respuesta_hf = respuesta_hf.replace(mensaje, "").strip()
-
+    
     frases_a_eliminar = [
+        "Si necesitas más información, házmelo saber.",
+        "Puedo ayudarte con más detalles si lo requieres.",
+        "Por favor, dime si necesitas algo más.",
         "Háganos saber si tiene otras preferencias o requisitos.",
         "Espero que esta información le sea útil.",
         "Será un placer ayudarle con su reserva.",
@@ -262,8 +293,8 @@ def traducir_a_espanol(texto):
         return texto
 
 
-def obtener_historial(user_id, limite=5):
-    """Obtiene los últimos 5 mensajes del usuario para contexto en la conversación."""
+def obtener_historial_usuario(user_id, limite=10):
+    """Obtiene los últimos 3 mensajes del usuario para contexto en la conversación."""
     try:
         historial = consultar_db(f"SELECT mensaje FROM historial WHERE user_id = %s ORDER BY timestamp DESC LIMIT %s", (user_id, limite))
         return [h["mensaje"] for h in historial] if historial else []
@@ -361,6 +392,7 @@ def chatbot():
 
     user_id = data.get("user_id")  # Identificar al usuario , "default"
     mensaje_usuario = data.get("mensaje", "").strip()
+    user_id = data.get("user_id", "default")
 
     if not mensaje_usuario:
         return jsonify({"respuesta": "Por favor, envía una consulta válida."})
@@ -404,11 +436,36 @@ def chatbot():
 
         return jsonify({"respuesta": f"No encontré lugares exactos para {categoria_detectada} en {ciudad_detectada}, intenta preguntarme de otra manera."})
 
+    # Evitar errores con mensajes genéricos
+    if mensaje_usuario.lower() in ["hola", "hi", "hey"]:
+        return jsonify({"respuesta": "¡Hola! ¿En qué puedo ayudarte con tu viaje?"})
+    
     # Si no detectamos ciudad ni intención clara, usamos Hugging Face como fallback
     respuesta = obtener_respuesta_huggingface(mensaje_usuario)
     respuesta_traducida = traducir_a_espanol(respuesta)
 
     guardar_mensaje(user_id, mensaje_usuario, respuesta_traducida)
+    # Obtener historial reciente del usuario
+    historial_usuario = obtener_historial_usuario(user_id)
+    contexto = "\n".join(historial_usuario)
+    
+    # Construir prompt con contexto limitado
+    prompt = f"""
+    {contexto}
+    Usuario: {mensaje_usuario}
+    Chatbot:
+    """
+    
+    respuesta = obtener_respuesta_huggingface(prompt)
+    respuesta_limpia = limpiar_respuesta_hf(mensaje_usuario, respuesta)
+    
+    # Guardar mensaje en historial si la BD está funcionando
+    try:
+        guardar_mensaje(user_id, mensaje_usuario, respuesta_limpia)
+    except Exception as e:
+        print(f"⚠ Error guardando historial: {e}")
+    
+    return jsonify({"respuesta": respuesta_limpia})
 
     return jsonify({"respuesta": respuesta_traducida, "coordenadas": []})  # Enviar coordenadas vacías si no se encontraron
     
